@@ -64,12 +64,12 @@ pub fn run(comptime T: type, init: std.process.Init) void {
                     .is_pressed = false,
                 }),
 
-                .MOUSE_UP => state.respond(.button, .{
+                .MOUSE_DOWN => state.respond(.button, .{
                     .button = buttonFromSokolMouseButton(event.*.mouse_button) orelse return,
                     .is_pressed = true,
                 }),
 
-                .MOUSE_DOWN => state.respond(.button, .{
+                .MOUSE_UP => state.respond(.button, .{
                     .button = buttonFromSokolMouseButton(event.*.mouse_button) orelse return,
                     .is_pressed = false,
                 }),
