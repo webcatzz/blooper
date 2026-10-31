@@ -98,12 +98,57 @@ pub const Queue = struct {
         try self.draw(&.{ vertices[0], vertices[1], vertices[3], vertices[0], vertices[3], vertices[2] });
     }
 
+    pub fn drawSlice9Patch(self: *Queue, src: math.Rect(f32), border: math.Sides(f32), dst: math.Rect(f32)) !void {
+        const Slice = struct { off: f32, len: f32 };
+        const SlicePair = struct { src: Slice, dst: Slice };
+
+        const h_slices: [3]SlicePair = .{ .{
+            .src = .{ .off = src.x, .len = border.left },
+            .dst = .{ .off = dst.x, .len = border.left },
+        }, .{
+            .src = .{ .off = src.x + border.left, .len = src.w - border.left - border.right },
+            .dst = .{ .off = dst.x + border.left, .len = dst.w - border.left - border.right },
+        }, .{
+            .src = .{ .off = src.x + src.w - border.right, .len = border.right },
+            .dst = .{ .off = dst.x + dst.w - border.right, .len = border.right },
+        } };
+        const v_slices: [3]SlicePair = .{ .{
+            .src = .{ .off = src.y, .len = border.top },
+            .dst = .{ .off = dst.y, .len = border.top },
+        }, .{
+            .src = .{ .off = src.y + border.top, .len = src.h - border.top - border.bottom },
+            .dst = .{ .off = dst.y + border.top, .len = dst.h - border.top - border.bottom },
+        }, .{
+            .src = .{ .off = src.y + src.h - border.bottom, .len = border.bottom },
+            .dst = .{ .off = dst.y + dst.h - border.bottom, .len = border.bottom },
+        } };
+
+        for (h_slices) |h_slice|
+            for (v_slices) |v_slice|
+                try self.drawSliceStretch(.{
+                    .x = h_slice.src.off,
+                    .y = v_slice.src.off,
+                    .w = h_slice.src.len,
+                    .h = v_slice.src.len,
+                }, .{
+                    .x = h_slice.dst.off,
+                    .y = v_slice.dst.off,
+                    .w = h_slice.dst.len,
+                    .h = v_slice.dst.len,
+                });
+    }
+
     pub fn drawSprite(self: *Queue, spr: Sprite, pos: math.Vec2(f32)) !void {
         try self.drawSlice(Sprite.info.get(spr).rect, pos);
     }
 
     pub fn drawSpriteStretch(self: *Queue, spr: Sprite, dst: math.Rect(f32)) !void {
         try self.drawSliceStretch(Sprite.info.get(spr).rect, dst);
+    }
+
+    pub fn drawSprite9Patch(self: *Queue, spr: Sprite, dst: math.Rect(f32)) !void {
+        const info = Sprite.info.get(spr);
+        try self.drawSlice9Patch(info.rect, info.border, dst);
     }
 
     /// Submits all queued operations to be rendered and clears the queue.
