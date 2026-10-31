@@ -1,7 +1,5 @@
 const std = @import("std");
 
-const in_path = "res/spr.aseprite";
-
 const SpriteInfo = struct {
     name: []const u8,
     x: u8,
@@ -14,15 +12,17 @@ const SpriteInfo = struct {
     border_bottom: u8,
 };
 
-/// Opens the Aseprite file at `in_path`, reads its slices, and stores them in
-/// ZON format at a provided output path.
+/// Opens an Aseprite file, reads its slices, and stores them in a ZON file.
+///
+/// Expects two command-line arguments: an input path and an output path.
 pub fn main(init: std.process.Init) !void {
-    const out_path = init: {
-        var arg_iter = try init.minimal.args.iterateAllocator(init.gpa);
-        defer arg_iter.deinit();
-        _ = arg_iter.skip();
-        break :init arg_iter.next() orelse return error.MissingOutPath;
-    };
+    var arg_iter = try init.minimal.args.iterateAllocator(init.gpa);
+    defer arg_iter.deinit();
+
+    _ = arg_iter.skip();
+
+    const out_path = arg_iter.next() orelse return error.MissingOutPath;
+    const in_path = arg_iter.next() orelse return error.MissingInPath;
 
     var sprite_info: std.ArrayList(SpriteInfo) = .empty;
     defer {

@@ -49,6 +49,7 @@ pub fn build(b: *std.Build) !void {
 
     const spr_cmd = b.addRunArtifact(spr_exe);
     const spr_path = spr_cmd.addOutputFileArg2("res/spr.zon", .{});
+    spr_cmd.addFileArg2(b.path("res/spr.aseprite"), .{});
 
     // Compiles executable
 
