@@ -1,6 +1,5 @@
 //! An editable track.
 
-const buf_pool = @import("../util/buf_pool.zig");
 const std = @import("std");
 const Track = @import("../synth/Track.zig");
 
