@@ -51,28 +51,41 @@ pub fn build(b: *std.Build) !void {
     const spr_path = spr_cmd.addOutputFileArg2("res/spr.zon", .{});
     spr_cmd.addFileArg2(b.path("res/spr.aseprite"), .{});
 
-    // Compiles executable
+    // Creates module
+
+    const mod = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "shd_basic", .module = shd_mod },
+            .{ .name = "sokol", .module = sokol_mod },
+            .{ .name = "spr_info", .module = b.createModule(.{ .root_source_file = spr_path }) },
+            .{ .name = "zflecs", .module = zflecs_mod },
+        },
+    });
 
     const exe = b.addExecutable(.{
         .name = "blooper",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "shd_basic", .module = shd_mod },
-                .{ .name = "sokol", .module = sokol_mod },
-                .{ .name = "spr_info", .module = b.createModule(.{ .root_source_file = spr_path }) },
-                .{ .name = "zflecs", .module = zflecs_mod },
-            },
-        }),
+        .root_module = mod,
     });
 
     b.installArtifact(exe);
 
+    // `check`
+
+    const ck_step = b.step("check", "Analyze code without compiling");
+
+    const ck_exe = b.addExecutable(.{
+        .name = "blooper",
+        .root_module = mod,
+    });
+
+    ck_step.dependOn(&ck_exe.step);
+
     // `run`
 
-    const run_step = b.step("run", "Run the game");
+    const run_step = b.step("run", "Run the app");
 
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
