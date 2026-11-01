@@ -16,6 +16,8 @@ pub const Action = enum {
     accept,
     cancel,
     remove,
+
+    quit,
 };
 
 /// A physical button binding for an action.
@@ -58,6 +60,8 @@ pub const Map = struct {
         .accept = .{ .{ .button = .mouse_left }, null },
         .cancel = .{ .{ .button = .key_escape }, null },
         .remove = .{ .{ .button = .key_backspace }, null },
+
+        .quit = .{ .{ .button = .key_w, .modifiers = .{ .super = true } }, null },
     });
 
     /// Records the given input event.

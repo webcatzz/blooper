@@ -106,6 +106,11 @@ pub fn run(comptime T: type, init: std.process.Init) void {
     });
 }
 
+/// Exits the currently running main loop.
+pub fn quit() void {
+    sokol.app.quit();
+}
+
 /// Returns the button ID corresponding to the given Sokol keycode, or `null`.
 fn buttonFromSokolKeycode(keycode: sokol.app.Keycode) ?input.Button {
     return switch (keycode) {

@@ -4,6 +4,7 @@ const action = @import("action.zig");
 const Ctx = @import("Ctx.zig");
 const Edit = @import("Edit.zig");
 const input = @import("core/input.zig");
+const loop = @import("core/loop.zig");
 const render = @import("core/render.zig");
 const std = @import("std");
 const Timeline = @import("ui/Timeline.zig");
@@ -47,6 +48,9 @@ pub fn respond(self: *App, comptime event_type: input.event.Type, event: input.e
         self.ctx.input.record(event_type, .{ .pos = render.mapPos(event.pos, .{ .x = width, .y = height }) })
     else
         self.ctx.input.record(event_type, event);
+
+    if (event_type == .button and self.ctx.input.wasJustActivated(.quit))
+        loop.quit();
 
     try self.timeline.respond(&self.ctx, event_type, event);
 }
