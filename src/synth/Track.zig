@@ -1,21 +1,21 @@
 /// The playback rate, in ticks-per-second.
-tempo: u16,
-channels: []Channel,
-patterns: []Pattern,
+tempo: u16 = 450,
+channels: []Channel = &.{},
+patterns: []Pattern = &.{},
 
 pub const Channel = struct {
     instrument: Instrument,
-    sections: []Section,
+    sections: []Section = &.{},
 };
 
 pub const Section = struct {
     first_tick: u64,
     last_tick: u64,
-    pat_i: u8,
+    pat_i: u16,
 };
 
 pub const Pattern = struct {
-    notes: []Note,
+    notes: []Note = &.{},
 };
 
 pub const Note = struct {
