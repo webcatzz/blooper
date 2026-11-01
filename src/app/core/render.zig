@@ -35,14 +35,15 @@ pub const Queue = struct {
 
         const shader = sokol.gfx.makeShader(shd_basic.basicShaderDesc(sokol.gfx.queryBackend()));
 
-        const pipeline = sokol.gfx.makePipeline(.{
-            .shader = shader,
-            .layout = init: {
-                var layout: sokol.gfx.VertexLayoutState = .{};
-                layout.attrs[shd_basic.ATTR_basic_vert_pos] = .{ .format = .FLOAT2 };
-                layout.attrs[shd_basic.ATTR_basic_vert_uv] = .{ .format = .FLOAT2 };
-                break :init layout;
-            },
+        const pipeline = sokol.gfx.makePipeline(init: {
+            var desc: sokol.gfx.PipelineDesc = .{};
+            desc.shader = shader;
+            desc.layout.attrs[shd_basic.ATTR_basic_vert_pos] = .{ .format = .FLOAT2 };
+            desc.layout.attrs[shd_basic.ATTR_basic_vert_uv] = .{ .format = .FLOAT2 };
+            desc.colors[0].blend.enabled = true;
+            desc.colors[0].blend.src_factor_rgb = .SRC_ALPHA;
+            desc.colors[0].blend.dst_factor_rgb = .ONE_MINUS_SRC_ALPHA;
+            break :init desc;
         });
 
         return .{
