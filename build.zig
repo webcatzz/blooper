@@ -28,14 +28,6 @@ pub fn build(b: *std.Build) !void {
         },
     });
 
-    // Adds zflecs
-
-    const zflecs_dep = b.dependency("zflecs", .{
-        .target = target,
-        .optimize = optimize,
-    });
-    const zflecs_mod = zflecs_dep.module("root");
-
     // Collects sprite info
 
     const spr_exe = b.addExecutable(.{
@@ -61,7 +53,6 @@ pub fn build(b: *std.Build) !void {
             .{ .name = "shd_basic", .module = shd_mod },
             .{ .name = "sokol", .module = sokol_mod },
             .{ .name = "spr_info", .module = b.createModule(.{ .root_source_file = spr_path }) },
-            .{ .name = "zflecs", .module = zflecs_mod },
         },
     });
 
