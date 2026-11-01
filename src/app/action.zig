@@ -10,8 +10,26 @@ pub const Action = enum {
     right,
     up,
     down,
+    next,
+    prev,
+
     accept,
     cancel,
+    remove,
+};
+
+/// A physical button binding for an action.
+const Binding = struct {
+    button: input.Button,
+    modifiers: Modifiers = .{},
+};
+
+/// A set of modifier buttons.
+const Modifiers = packed struct {
+    shift: bool = false,
+    ctrl: bool = false,
+    alt: bool = false,
+    super: bool = false,
 };
 
 /// Records input events and keeps track of input state.
@@ -20,21 +38,26 @@ pub const Map = struct {
     pressed_buttons: std.EnumSet(input.Button) = .empty,
     /// The most recently recorded cursor position.
     cursor_pos: math.Vec2(f32) = .zero,
+    /// The motion of the cursor, relative to the second-most recently recorded
+    /// cursor position.
+    cursor_motion: math.Vec2(f32) = .zero,
     /// Button bindings for each action.
-    bindings: std.EnumArray(Action, [2]Binding) = default_bindings,
+    bindings: std.EnumArray(Action, [2]?Binding) = default_bindings,
     /// The most recently recorded input event.
     last_event: input.event.Any = .{ .cursor = .{ .pos = .zero } },
 
-    const Binding = ?input.Button;
-
     /// Default button bindings.
-    pub const default_bindings: @FieldType(Map, "bindings") = .initDefault(.{ null, null }, .{
-        .left = .{ .key_left, null },
-        .right = .{ .key_right, null },
-        .up = .{ .key_up, null },
-        .down = .{ .key_down, null },
-        .accept = .{ .key_z, null },
-        .cancel = .{ .key_x, null },
+    pub const default_bindings: @FieldType(Map, "bindings") = .init(.{
+        .left = .{ .{ .button = .key_left }, null },
+        .right = .{ .{ .button = .key_right }, null },
+        .up = .{ .{ .button = .key_up }, null },
+        .down = .{ .{ .button = .key_down }, null },
+        .next = .{ .{ .button = .key_tab }, null },
+        .prev = .{ .{ .button = .key_tab, .modifiers = .{ .shift = true } }, null },
+
+        .accept = .{ .{ .button = .mouse_left }, null },
+        .cancel = .{ .{ .button = .key_escape }, null },
+        .remove = .{ .{ .button = .key_backspace }, null },
     });
 
     /// Records the given input event.
@@ -45,6 +68,7 @@ pub const Map = struct {
                 self.last_event = .{ .button = event };
             },
             .cursor => {
+                self.cursor_motion = event.pos.sub(self.cursor_pos);
                 self.cursor_pos = event.pos;
                 self.last_event = .{ .cursor = event };
             },
@@ -54,9 +78,10 @@ pub const Map = struct {
 
     /// Returns `true` if the given action is active.
     pub fn isActive(self: Map, action: Action) bool {
-        for (self.bindings.get(action)) |binding|
-            if (binding) |button|
-                if (self.pressed_buttons.contains(button))
+        for (self.bindings.get(action)) |maybe_binding|
+            if (maybe_binding) |binding|
+                if (self.pressed_buttons.contains(binding.button) and
+                    self.areModifiersPressed(binding.modifiers))
                     return true;
         return false;
     }
@@ -65,9 +90,10 @@ pub const Map = struct {
     pub fn wasJustActivated(self: Map, action: Action) bool {
         switch (self.last_event) {
             .button => |button_event| if (button_event.is_pressed)
-                for (self.bindings.get(action)) |binding|
-                    if (binding) |button|
-                        if (button_event.button == button)
+                for (self.bindings.get(action)) |maybe_binding|
+                    if (maybe_binding) |binding|
+                        if (binding.button == button_event.button and
+                            self.areModifiersPressed(binding.modifiers))
                             return true,
             else => {},
         }
@@ -78,13 +104,22 @@ pub const Map = struct {
     pub fn wasJustDeactivated(self: Map, action: Action) bool {
         switch (self.last_event) {
             .button => |button_event| if (!button_event.is_pressed)
-                for (self.bindings.get(action)) |binding|
-                    if (binding) |button|
-                        if (button_event.button == button)
+                for (self.bindings.get(action)) |maybe_binding|
+                    if (maybe_binding) |binding|
+                        if (binding.button == button_event.button and
+                            self.areModifiersPressed(maybe_binding.modifiers))
                             return true,
             else => {},
         }
         return false;
+    }
+
+    /// Returns `true` if the given modifiers are all pressed.
+    fn areModifiersPressed(self: Map, modifiers: Modifiers) bool {
+        return (!modifiers.shift or self.pressed_buttons.contains(.key_lshift) or self.pressed_buttons.contains(.key_rshift)) and
+            (!modifiers.ctrl or self.pressed_buttons.contains(.key_lctrl) or self.pressed_buttons.contains(.key_rctrl)) and
+            (!modifiers.alt or self.pressed_buttons.contains(.key_lalt) or self.pressed_buttons.contains(.key_ralt)) and
+            (!modifiers.super or self.pressed_buttons.contains(.key_lsuper) or self.pressed_buttons.contains(.key_rsuper));
     }
 
     /// Returns a unit vector based on the state of each of the given actions.
