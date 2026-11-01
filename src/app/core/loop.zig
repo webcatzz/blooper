@@ -8,7 +8,7 @@ const std = @import("std");
 pub var gpa: std.mem.Allocator = undefined;
 pub var io: std.Io = undefined;
 
-/// Runs the application defined by the given type.
+/// Runs the application defined by `T`.
 ///
 /// `T` should fulfill the following interface:
 ///
@@ -109,12 +109,58 @@ pub fn run(comptime T: type, init: std.process.Init) void {
 /// Returns the button ID corresponding to the given Sokol keycode, or `null`.
 fn buttonFromSokolKeycode(keycode: sokol.app.Keycode) ?input.Button {
     return switch (keycode) {
-        .A, .B, .C, .D, .E, .F, .G, .H, .I, .J, .K, .L, .M, .N, .O, .P, .Q, .R, .S, .T, .U, .V, .W, .X, .Y, .Z => @fromBackingInt(@as(u8, @intCast(@backingInt(keycode) - @backingInt(sokol.app.Keycode.A))) + @backingInt(input.Button.key_a)),
-        ._0, ._1, ._2, ._3, ._4, ._5, ._6, ._7, ._8, ._9 => @fromBackingInt(@as(u8, @intCast(@backingInt(keycode) - @backingInt(sokol.app.Keycode._0))) + @backingInt(input.Button.key_0)),
-        .LEFT => .key_left,
+        .A => .key_a,
+        .B => .key_b,
+        .C => .key_c,
+        .D => .key_d,
+        .E => .key_e,
+        .F => .key_f,
+        .G => .key_g,
+        .H => .key_h,
+        .I => .key_i,
+        .J => .key_j,
+        .K => .key_k,
+        .L => .key_l,
+        .M => .key_m,
+        .N => .key_n,
+        .O => .key_o,
+        .P => .key_p,
+        .Q => .key_q,
+        .R => .key_r,
+        .S => .key_s,
+        .T => .key_t,
+        .U => .key_u,
+        .V => .key_v,
+        .W => .key_w,
+        .X => .key_x,
+        .Y => .key_y,
+        .Z => .key_z,
+        ._0 => .key_0,
+        ._1 => .key_1,
+        ._2 => .key_2,
+        ._3 => .key_3,
+        ._4 => .key_4,
+        ._5 => .key_5,
+        ._6 => .key_6,
+        ._7 => .key_7,
+        ._8 => .key_8,
+        ._9 => .key_9,
         .RIGHT => .key_right,
-        .UP => .key_up,
+        .LEFT => .key_left,
         .DOWN => .key_down,
+        .UP => .key_up,
+        .ESCAPE => .key_escape,
+        .ENTER => .key_enter,
+        .TAB => .key_tab,
+        .BACKSPACE => .key_backspace,
+        .LEFT_SHIFT => .key_lshift,
+        .LEFT_CONTROL => .key_lctrl,
+        .LEFT_ALT => .key_lalt,
+        .LEFT_SUPER => .key_lsuper,
+        .RIGHT_SHIFT => .key_rshift,
+        .RIGHT_CONTROL => .key_rctrl,
+        .RIGHT_ALT => .key_ralt,
+        .RIGHT_SUPER => .key_rsuper,
         else => null,
     };
 }

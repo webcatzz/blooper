@@ -37,6 +37,9 @@ pub const event = struct {
 };
 
 /// A button the user might press.
+///
+/// The order of buttons is significant; they are enumerated in the same order
+/// as Sokol keycodes so that converting from one to the other can be optimized.
 pub const Button = enum(u8) {
     key_a,
     key_b,
@@ -74,10 +77,22 @@ pub const Button = enum(u8) {
     key_7,
     key_8,
     key_9,
-    key_left,
     key_right,
-    key_up,
+    key_left,
     key_down,
+    key_up,
+    key_escape,
+    key_enter,
+    key_tab,
+    key_backspace,
+    key_lshift,
+    key_lctrl,
+    key_lalt,
+    key_lsuper,
+    key_rshift,
+    key_rctrl,
+    key_ralt,
+    key_rsuper,
 
     mouse_left,
     mouse_right,
