@@ -16,8 +16,8 @@ render_queue: render.Queue,
 
 timeline: Timeline = .{},
 
-const width = 200;
-const height = 150;
+/// The scale at which the application renders.
+const scale = 4;
 
 pub fn init(gpa: std.mem.Allocator, _: std.Io) !App {
     var render_queue: render.Queue = try .init();
@@ -40,12 +40,12 @@ pub fn deinit(self: *App) void {
 
 pub fn iter(self: *App) !void {
     try self.timeline.draw(self.ctx, &self.render_queue);
-    self.render_queue.flush(.{ .x = width, .y = height });
+    self.render_queue.flush(scale);
 }
 
 pub fn respond(self: *App, comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
     if (event_type == .cursor)
-        self.ctx.input.record(event_type, .{ .pos = render.mapPos(event.pos, .{ .x = width, .y = height }) })
+        self.ctx.input.record(event_type, .{ .pos = event.pos.div(.all(scale)) })
     else
         self.ctx.input.record(event_type, event);
 

@@ -153,7 +153,9 @@ pub const Queue = struct {
     }
 
     /// Submits all queued operations to be rendered and clears the queue.
-    pub fn flush(self: *Queue, size: math.Vec2(f32)) void {
+    ///
+    /// `scale` is a multiplier applied to all vertex positions.
+    pub fn flush(self: *Queue, scale: f32) void {
         if (self.vtx_buf.items.len > 0)
             sokol.gfx.writeBufferTransient(.{
                 .src = .{ .data = .{
@@ -185,7 +187,7 @@ pub const Queue = struct {
         sokol.gfx.applyBindings(bindings);
 
         sokol.gfx.applyUniforms(shd_basic.UB_vert_uniform, .{
-            .ptr = &shd_basic.VertUniform{ .scale_mult = .{ 1 / size.x, 1 / size.y } },
+            .ptr = &shd_basic.VertUniform{ .scale_mult = .{ scale / widthf(), scale / heightf() } },
             .size = @sizeOf(shd_basic.VertUniform),
         });
 
@@ -242,12 +244,6 @@ pub fn widthf() f32 {
 /// Returns the height of the rendering viewport, in pixels.
 pub fn heightf() f32 {
     return sokol.app.heightf();
-}
-
-/// Converts from window coordinates to viewport coordinates, given a viewport
-/// size.
-pub fn mapPos(pos: math.Vec2(f32), size: math.Vec2(f32)) math.Vec2(f32) {
-    return .{ .x = pos.x * size.x / widthf(), .y = pos.y * size.y / heightf() };
 }
 
 /// Loads the spritesheet.
