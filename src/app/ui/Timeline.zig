@@ -86,19 +86,22 @@ pub fn respond(self: *Timeline, ctx: *Ctx, comptime event_type: input.event.Type
 
                     .sect_start => |sect_coords| {
                         const sect = &ctx.edit.track.channels[sect_coords.chan_i].sections[sect_coords.sect_i];
-                        sect.first_tick = @min(sect.last_tick, @as(u64, @trunc((ctx.input.cursor_pos.x + self.scroll.x) / tick_width)));
+                        sect.first_tick = @min(sect.last_tick, @as(u64, @trunc((ctx.input.cursor_pos.x - self.scroll.x) / tick_width)));
                     },
 
                     .sect_end => |sect_coords| {
                         const sect = &ctx.edit.track.channels[sect_coords.chan_i].sections[sect_coords.sect_i];
-                        sect.last_tick = @max(sect.first_tick, @as(u64, @trunc((ctx.input.cursor_pos.x + self.scroll.x) / tick_width)));
+                        sect.last_tick = @max(sect.first_tick, @as(u64, @trunc((ctx.input.cursor_pos.x - self.scroll.x) / tick_width)));
                     },
 
                     else => {},
                 };
         },
 
-        .scroll => self.scroll.addAssign(event.amount),
+        .scroll => {
+            self.scroll.x = @min(self.scroll.x + event.amount.x, 0);
+            self.scroll.y = @min(self.scroll.y + event.amount.y, 0);
+        },
     }
 }
 
