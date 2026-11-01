@@ -10,6 +10,7 @@ const std = @import("std");
 
 /// A queue of rendering operations.
 pub const Queue = struct {
+    cmd_buf: std.ArrayList(Command),
     vtx_buf: std.ArrayList(Vertex),
     _gpu_vtx_buf: sokol.gfx.Buffer,
     _gpu_img: sokol.gfx.Image,
@@ -47,6 +48,7 @@ pub const Queue = struct {
         });
 
         return .{
+            .cmd_buf = .empty,
             .vtx_buf = .empty,
             ._gpu_vtx_buf = vtx_buf,
             ._gpu_img = img,
@@ -60,6 +62,7 @@ pub const Queue = struct {
     ///
     /// The queue should not be used after calling this function.
     pub fn deinit(self: *Queue) void {
+        self.cmd_buf.deinit(loop.gpa);
         self.vtx_buf.deinit(loop.gpa);
         sokol.gfx.destroyBuffer(self._gpu_vtx_buf);
         sokol.gfx.destroyImage(self._gpu_img);
@@ -81,8 +84,14 @@ pub const Queue = struct {
             sokol.gfx.destroyBuffer(self._gpu_vtx_buf);
             self._gpu_vtx_buf = gpu_vtx_buf;
         }
-
         self.vtx_buf.appendSliceAssumeCapacity(vertices);
+
+        if (self.cmd_buf.lastPtr()) |last_cmd|
+            if (last_cmd.* == .draw) {
+                last_cmd.draw += @intCast(vertices.len);
+                return;
+            };
+        try self.cmd_buf.append(loop.gpa, .{ .draw = @intCast(vertices.len) });
     }
 
     pub fn drawSlice(self: *Queue, src: math.Rect(f32), pos: math.Vec2(f32)) !void {
@@ -152,6 +161,14 @@ pub const Queue = struct {
         try self.drawSlice9Patch(info.rect, info.border, dst);
     }
 
+    pub fn clip(self: *Queue, rect: math.Rect(f32)) !void {
+        try self.cmd_buf.append(loop.gpa, .{ .clip = rect });
+    }
+
+    pub fn unclip(self: *Queue) !void {
+        try self.cmd_buf.append(loop.gpa, .unclip);
+    }
+
     /// Submits all queued operations to be rendered and clears the queue.
     ///
     /// `scale` is a multiplier applied to all vertex positions.
@@ -191,11 +208,39 @@ pub const Queue = struct {
             .size = @sizeOf(shd_basic.VertUniform),
         });
 
-        sokol.gfx.draw(0, @intCast(self.vtx_buf.items.len), 1);
+        var vtx_idx: u32 = 0;
+        for (self.cmd_buf.items) |cmd|
+            switch (cmd) {
+                .draw => |vtx_count| {
+                    sokol.gfx.draw(vtx_idx, vtx_count, 1);
+                    vtx_idx += vtx_count;
+                },
+
+                .clip => |rect| {
+                    sokol.gfx.applyScissorRectf(
+                        rect.x * scale,
+                        rect.y * scale,
+                        rect.w * scale,
+                        rect.h * scale,
+                        true,
+                    );
+                },
+
+                .unclip => {
+                    sokol.gfx.applyScissorRect(
+                        0,
+                        0,
+                        width(),
+                        height(),
+                        true,
+                    );
+                },
+            };
 
         sokol.gfx.endPass();
         sokol.gfx.commit();
 
+        self.cmd_buf.clearRetainingCapacity();
         self.vtx_buf.clearRetainingCapacity();
     }
 };
@@ -214,6 +259,13 @@ pub const Sprite = enum {
         rect: math.Rect(f32),
         border: math.Sides(f32),
     };
+};
+
+/// A rendering operation.
+const Command = union(enum) {
+    draw: u32,
+    clip: math.Rect(f32),
+    unclip,
 };
 
 /// A chunk of data passed to the vertex shader.
