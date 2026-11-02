@@ -92,6 +92,16 @@ pub fn Rect(comptime T: type) type {
         y: T = 0,
         w: T,
         h: T,
+
+        /// Returns the position of the rectangle.
+        pub fn pos(self: Rect(T)) Vec2(T) {
+            return .{ .x = self.x, .y = self.y };
+        }
+
+        /// Returns the size of the rectangle.
+        pub fn size(self: Rect(T)) Vec2(T) {
+            return .{ .x = self.w, .y = self.h };
+        }
     };
 }
 
