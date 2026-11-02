@@ -88,8 +88,8 @@ pub fn Vec2(comptime T: type) type {
 /// A rectangle.
 pub fn Rect(comptime T: type) type {
     return struct {
-        x: T,
-        y: T,
+        x: T = 0,
+        y: T = 0,
         w: T,
         h: T,
     };
