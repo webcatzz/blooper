@@ -1,10 +1,26 @@
+//! Track data used to synthesize audio.
+
+const std = @import("std");
+
+const Track = @This();
+
 /// The playback rate, in ticks-per-second.
 tempo: u16 = 450,
+/// The channels in the track.
+///
+/// There should be no more than 2^16 channels.
 channels: []Channel = &.{},
+/// The patterns in the track.
+///
+/// There should be no more than 2^16 patterns.
 patterns: []Pattern = &.{},
 
 pub const Channel = struct {
-    instrument: Instrument,
+    /// The instrument used to play notes in the channel.
+    instrument: Instrument = .{ .base = .{ .chip_pulse = 0.5 } },
+    /// The sections in the channel.
+    ///
+    /// There should be no more than 2^16 sections.
     sections: []Section = &.{},
 };
 
@@ -15,6 +31,9 @@ pub const Section = struct {
 };
 
 pub const Pattern = struct {
+    /// The notes in the channel.
+    ///
+    /// There should be no more than 2^16 notes.
     notes: []Note = &.{},
 };
 

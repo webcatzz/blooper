@@ -1,6 +1,7 @@
 //! Application state.
 
 const action = @import("action.zig");
+const audio = @import("core/audio.zig");
 const Ctx = @import("Ctx.zig");
 const Edit = @import("Edit.zig");
 const input = @import("core/input.zig");
@@ -15,6 +16,7 @@ const App = @This();
 
 ctx: Ctx,
 render_queue: render.Queue,
+synth_buf: []f32,
 
 timeline: Timeline = .{},
 piano_roll: PianoRoll = .{},
@@ -26,23 +28,30 @@ pub fn init(gpa: std.mem.Allocator, _: std.Io) !App {
     var render_queue: render.Queue = try .init();
     errdefer render_queue.deinit();
 
+    const synth_buf = try gpa.alloc(f32, 1024);
+    errdefer gpa.free(synth_buf);
+
     const ctx: Ctx = try .init(gpa);
     errdefer ctx.deinit();
 
     return .{
         .ctx = ctx,
         .render_queue = render_queue,
+        .synth_buf = synth_buf,
         .piano_roll = .{ .pat_i = 0 },
     };
 }
 
 pub fn deinit(self: *App) void {
+    self.ctx.gpa.free(self.synth_buf);
     self.ctx.deinit();
     self.render_queue.deinit();
     self.* = undefined;
 }
 
 pub fn iter(self: *App) !void {
+    // Renders
+
     try ui.v_split.draw(
         self.piano_roll,
         self.timeline,
@@ -53,6 +62,12 @@ pub fn iter(self: *App) !void {
     );
 
     self.render_queue.flush(scale);
+
+    // Streams audio
+
+    if (self.ctx.is_playing) {
+        // TODO
+    }
 }
 
 pub fn respond(self: *App, comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
@@ -61,8 +76,15 @@ pub fn respond(self: *App, comptime event_type: input.event.Type, event: input.e
     else
         self.ctx.input.record(event_type, event);
 
-    if (event_type == .button and self.ctx.input.wasJustActivated(.quit))
-        loop.quit();
+    if (event_type == .button) {
+        if (self.ctx.input.wasJustActivated(.toggle_synth)) {
+            self.ctx.is_playing = !self.ctx.is_playing;
+            self.ctx.synth.seek(0);
+        } else if (self.ctx.input.wasJustActivated(.quit))
+            loop.quit();
+    }
+
+    if (self.ctx.is_playing) return;
 
     try ui.v_split.respond(
         &self.piano_roll,

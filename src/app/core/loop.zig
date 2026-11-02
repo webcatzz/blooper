@@ -30,6 +30,15 @@ pub fn run(comptime T: type, init: std.process.Init) void {
                 .logger = .{ .func = sokol.log.func },
             });
 
+            sokol.audio.setup(.{
+                .logger = .{ .func = sokol.log.func },
+            });
+
+            if (!sokol.gfx.isvalid())
+                std.log.scoped(.sokol).err("Failed to initialize Sokol graphics backend", .{});
+            if (!sokol.audio.isvalid())
+                std.log.scoped(.sokol).err("Failed to initialize Sokol audio backend", .{});
+
             state = T.init(gpa, io) catch {
                 if (@errorReturnTrace()) |trace|
                     std.debug.dumpErrorReturnTrace(trace);
@@ -40,6 +49,7 @@ pub fn run(comptime T: type, init: std.process.Init) void {
 
         fn sokolCleanup() callconv(.c) void {
             state.deinit();
+            sokol.audio.shutdown();
             sokol.gfx.shutdown();
         }
 

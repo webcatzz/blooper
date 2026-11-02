@@ -1,11 +1,21 @@
+//! State shared by UI elements.
+
 const action = @import("action.zig");
 const Edit = @import("Edit.zig");
 const std = @import("std");
+const Synth = @import("../synth/Synth.zig");
 
 const Ctx = @This();
 
 edit: Edit,
 input: action.Map = .{},
+
+/// A synthesizer used to play tracks.
+synth: Synth = .{},
+/// If `true`, `synth` should play the track in `edit`.
+is_playing: bool = false,
+
+gpa: std.mem.Allocator,
 
 pub fn init(gpa: std.mem.Allocator) !Ctx {
     var edit: Edit = try .init(gpa);
@@ -16,9 +26,11 @@ pub fn init(gpa: std.mem.Allocator) !Ctx {
 
     return .{
         .edit = edit,
+        .gpa = gpa,
     };
 }
 
 pub fn deinit(self: *Ctx) void {
+    self.synth.deinit(self.gpa);
     self.edit.deinit();
 }
