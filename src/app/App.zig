@@ -5,9 +5,11 @@ const Ctx = @import("Ctx.zig");
 const Edit = @import("Edit.zig");
 const input = @import("core/input.zig");
 const loop = @import("core/loop.zig");
+const PianoRoll = @import("ui/PianoRoll.zig");
 const render = @import("core/render.zig");
 const std = @import("std");
 const Timeline = @import("ui/Timeline.zig");
+const ui = @import("ui/common.zig");
 
 const App = @This();
 
@@ -15,6 +17,7 @@ ctx: Ctx,
 render_queue: render.Queue,
 
 timeline: Timeline = .{},
+piano_roll: PianoRoll = .{},
 
 /// The scale at which the application renders.
 const scale = 4;
@@ -29,6 +32,7 @@ pub fn init(gpa: std.mem.Allocator, _: std.Io) !App {
     return .{
         .ctx = ctx,
         .render_queue = render_queue,
+        .piano_roll = .{ .pat_i = 0 },
     };
 }
 
@@ -39,7 +43,15 @@ pub fn deinit(self: *App) void {
 }
 
 pub fn iter(self: *App) !void {
-    try self.timeline.draw(self.ctx, &self.render_queue);
+    try ui.v_split.draw(
+        self.piano_roll,
+        self.timeline,
+        self.ctx,
+        .{ .w = render.widthf() / scale, .h = render.heightf() / scale },
+        0.67,
+        &self.render_queue,
+    );
+
     self.render_queue.flush(scale);
 }
 
@@ -52,5 +64,13 @@ pub fn respond(self: *App, comptime event_type: input.event.Type, event: input.e
     if (event_type == .button and self.ctx.input.wasJustActivated(.quit))
         loop.quit();
 
-    try self.timeline.respond(&self.ctx, event_type, event);
+    try ui.v_split.respond(
+        &self.piano_roll,
+        &self.timeline,
+        &self.ctx,
+        .{ .w = render.widthf() / scale, .h = render.heightf() / scale },
+        0.67,
+        event_type,
+        event,
+    );
 }

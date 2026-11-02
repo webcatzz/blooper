@@ -12,8 +12,8 @@ scroll: math.Vec2(f32) = .zero,
 sel: Selection = .none,
 
 const tick_width = 0.25;
-const chan_height = 64;
-const sect_edge_width = 32;
+const chan_height = 32;
+const sect_edge_width = 4;
 
 /// A position in a channel.
 const ChannelPos = struct { chan_i: u16, tick: u64 };
@@ -37,11 +37,11 @@ const Selection = union(enum) {
     sect_end: SectionCoords,
 };
 
-pub fn respond(self: *Timeline, ctx: *Ctx, comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
+pub fn respond(self: *Timeline, ctx: *Ctx, rect: math.Rect(f32), comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
     switch (event_type) {
         .button => {
             if (ctx.input.wasJustActivated(.accept))
-                switch (self.pick(ctx.edit.track, ctx.input.cursor_pos)) {
+                switch (self.pick(ctx.edit.track, ctx.input.cursor_pos, rect.pos())) {
                     .none => self.sel = .none,
 
                     .chan => |chan_pos| {
@@ -105,11 +105,17 @@ pub fn respond(self: *Timeline, ctx: *Ctx, comptime event_type: input.event.Type
     }
 }
 
-pub fn draw(self: Timeline, ctx: Ctx, queue: *render.Queue) !void {
-    for (ctx.edit.track.channels, 0..) |chan, chan_i| {
+pub fn draw(self: Timeline, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queue) !void {
+    try queue.drawSprite9Patch(.sect_blue, rect);
+    try queue.clip(rect);
+
+    const min_chan_i: u16 = @trunc(-self.scroll.y / chan_height);
+    const max_chan_i = @min(min_chan_i + @as(u16, @trunc(rect.h / chan_height)) + 1, ctx.edit.track.channels.len);
+
+    for (ctx.edit.track.channels[min_chan_i..max_chan_i], min_chan_i..) |chan, chan_i| {
         for (chan.sections) |sect| {
-            const pos = self.project(@intCast(chan_i), sect.first_tick);
-            try queue.drawSprite9Patch(.note_yellow, .{
+            const pos = self.project(@intCast(chan_i), sect.first_tick, rect.pos());
+            try queue.drawSprite9Patch(.sect_red, .{
                 .x = pos.x,
                 .y = pos.y,
                 .w = @as(f32, @floatFromInt(sect.last_tick - sect.first_tick)) * tick_width,
@@ -123,7 +129,7 @@ pub fn draw(self: Timeline, ctx: Ctx, queue: *render.Queue) !void {
 
         .sect, .sect_start, .sect_end => |coords| {
             const sect = ctx.edit.track.channels[coords.chan_i].sections[coords.sect_i];
-            const pos = self.project(coords.chan_i, sect.first_tick);
+            const pos = self.project(coords.chan_i, sect.first_tick, rect.pos());
             try queue.drawSprite9Patch(.outline, .{
                 .x = pos.x - 2,
                 .y = pos.y - 2,
@@ -132,12 +138,14 @@ pub fn draw(self: Timeline, ctx: Ctx, queue: *render.Queue) !void {
             });
         },
     }
+
+    try queue.unclip();
 }
 
 /// Returns the cursor target at the given position.
-fn pick(self: Timeline, track: Track, pos: math.Vec2(f32)) Target {
-    const tick: u64 = @intFromFloat((pos.x - self.scroll.x) / tick_width);
-    const chan_i: u8 = @intFromFloat((pos.y - self.scroll.y) / chan_height);
+fn pick(self: Timeline, track: Track, pos: math.Vec2(f32), off: math.Vec2(f32)) Target {
+    const tick: u64 = @intFromFloat((pos.x - off.x - self.scroll.x) / tick_width);
+    const chan_i: u8 = @intFromFloat((pos.y - off.y - self.scroll.y) / chan_height);
 
     if (chan_i >= track.channels.len)
         return .none;
@@ -157,9 +165,9 @@ fn pick(self: Timeline, track: Track, pos: math.Vec2(f32)) Target {
 }
 
 /// Returns the position corresponding to the given channel index and tick.
-fn project(self: Timeline, chan_i: u16, tick: u64) math.Vec2(f32) {
+fn project(self: Timeline, chan_i: u16, tick: u64, off: math.Vec2(f32)) math.Vec2(f32) {
     return .{
-        .x = @as(f32, @floatFromInt(tick)) * tick_width + self.scroll.x,
-        .y = @as(f32, @floatFromInt(chan_i)) * chan_height + self.scroll.y,
+        .x = @as(f32, @floatFromInt(tick)) * tick_width + self.scroll.x + off.x,
+        .y = @as(f32, @floatFromInt(chan_i)) * chan_height + self.scroll.y + off.y,
     };
 }
