@@ -114,6 +114,7 @@ pub fn quit() void {
 /// Returns the button ID corresponding to the given Sokol keycode, or `null`.
 fn buttonFromSokolKeycode(keycode: sokol.app.Keycode) ?input.Button {
     return switch (keycode) {
+        .SPACE => .key_space,
         .A => .key_a,
         .B => .key_b,
         .C => .key_c,
@@ -150,14 +151,14 @@ fn buttonFromSokolKeycode(keycode: sokol.app.Keycode) ?input.Button {
         ._7 => .key_7,
         ._8 => .key_8,
         ._9 => .key_9,
-        .RIGHT => .key_right,
-        .LEFT => .key_left,
-        .DOWN => .key_down,
-        .UP => .key_up,
         .ESCAPE => .key_escape,
         .ENTER => .key_enter,
         .TAB => .key_tab,
         .BACKSPACE => .key_backspace,
+        .RIGHT => .key_right,
+        .LEFT => .key_left,
+        .DOWN => .key_down,
+        .UP => .key_up,
         .LEFT_SHIFT => .key_lshift,
         .LEFT_CONTROL => .key_lctrl,
         .LEFT_ALT => .key_lalt,
