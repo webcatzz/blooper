@@ -23,52 +23,75 @@ pub const v_split = struct {
     }
 };
 
-pub const scrollbox = struct {
-    const scrollbar_width = 4;
+pub const scroll_bar = struct {
+    const min_thumb_len = 6;
 
-    pub fn respond(comptime T: type, inner: *T, ctx: *Ctx, rect: math.Rect(f32), comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
-        if (@hasField(T, "scroll") and event_type == .scroll) {
-            inner.scroll.x = @min(inner.scroll.x + event.amount.x, 0);
-            inner.scroll.y = @min(inner.scroll.y + event.amount.y, 0);
-        }
+    pub fn draw(comptime axis: math.Axis, scroll: f32, max_scroll: f32, rect: math.Rect(f32), queue: *render.Queue) !void {
+        const thumb_len = @max(min_thumb_len, switch (axis) {
+            .x => rect.w,
+            .y => rect.h,
+        } / max_scroll);
 
-        try inner.respond(ctx, .{
-            .x = rect.x,
-            .y = rect.y,
-            .w = rect.w - scrollbar_width,
-            .h = rect.h - scrollbar_width,
-        }, event_type, event);
-    }
-
-    pub fn draw(comptime T: type, inner: T, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queue) !void {
-        const inner_w = rect.w - scrollbar_width;
-        const inner_h = rect.h - scrollbar_width;
-
-        try queue.drawSprite9Patch(.scroll_track, .{
-            .x = rect.x + inner_w,
-            .y = rect.y,
-            .w = scrollbar_width,
-            .h = inner_h,
-        }, queue);
-        try queue.drawSprite9Patch(.scroll_track, .{
-            .x = rect.x,
-            .y = rect.y + inner_h,
-            .w = inner_w,
-            .h = scrollbar_width,
-        }, queue);
-
-        try queue.clip(.{
-            .x = rect.x,
-            .y = rect.y,
-            .w = inner_w,
-            .h = inner_h,
+        try queue.drawSprite9Patch(.scroll_track, rect);
+        try queue.drawSprite9Patch(.scroll_thumb, switch (axis) {
+            .x => .{
+                .x = rect.x + (rect.w - thumb_len) * (scroll / max_scroll) - 1,
+                .y = rect.y - 1,
+                .w = thumb_len + 2,
+                .h = rect.h + 2,
+            },
+            .y => .{
+                .x = rect.x - 1,
+                .y = rect.y + (rect.h - thumb_len) * (scroll / max_scroll) - 1,
+                .w = rect.w + 2,
+                .h = thumb_len + 2,
+            },
         });
-        try inner.draw(ctx, .{
-            .x = rect.x,
-            .y = rect.y,
-            .w = inner_w,
-            .h = inner_h,
-        }, queue);
-        try queue.unclip();
     }
 };
+
+pub fn ScrollBox(comptime T: type) type {
+    return struct {
+        inner: T,
+
+        const scrollbar_width = 4;
+
+        pub fn respond(self: *ScrollBox(T), ctx: *Ctx, rect: math.Rect(f32), comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
+            try self.inner.respond(ctx, .{
+                .x = rect.x,
+                .y = rect.y,
+                .w = rect.w - scrollbar_width,
+                .h = rect.h - scrollbar_width,
+            }, event_type, event);
+        }
+
+        pub fn draw(self: ScrollBox(T), ctx: Ctx, rect: math.Rect(f32), queue: *render.Queue) !void {
+            const inner_w = rect.w - scrollbar_width;
+            const inner_h = rect.h - scrollbar_width;
+
+            try queue.drawSprite9Patch(.frame, rect);
+
+            const total_h: f32 = T.totalHeight(ctx);
+
+            try scroll_bar.draw(.x, self.inner.scroll.x, total_h, .{
+                .x = rect.x,
+                .y = rect.y + inner_h,
+                .w = inner_w,
+                .h = scrollbar_width,
+            }, queue);
+            try scroll_bar.draw(.y, self.inner.scroll.y, total_h, .{
+                .x = rect.x + inner_w,
+                .y = rect.y,
+                .w = scrollbar_width,
+                .h = inner_h,
+            }, queue);
+
+            try self.inner.draw(ctx, .{
+                .x = rect.x,
+                .y = rect.y,
+                .w = inner_w,
+                .h = inner_h,
+            }, queue);
+        }
+    };
+}

@@ -87,12 +87,12 @@ pub fn respond(self: *PianoRoll, ctx: *Ctx, rect: math.Rect(f32), comptime event
 
                     .note_start => |note_i| {
                         const note = &ctx.edit.track.patterns[pat_i].notes[note_i];
-                        note.first_tick = @min(note.last_tick, @as(u16, @trunc((ctx.input.cursor_pos.x - self.scroll.x) / tick_width)));
+                        note.first_tick = @min(note.last_tick, @as(u16, @trunc((ctx.input.cursor_pos.x + self.scroll.x) / tick_width)));
                     },
 
                     .note_end => |note_i| {
                         const note = &ctx.edit.track.patterns[pat_i].notes[note_i];
-                        note.last_tick = @max(note.first_tick, @as(u16, @trunc((ctx.input.cursor_pos.x - self.scroll.x) / tick_width)));
+                        note.last_tick = @max(note.first_tick, @as(u16, @trunc((ctx.input.cursor_pos.x + self.scroll.x) / tick_width)));
                     },
 
                     else => {},
@@ -100,15 +100,13 @@ pub fn respond(self: *PianoRoll, ctx: *Ctx, rect: math.Rect(f32), comptime event
         },
 
         .scroll => {
-            self.scroll.x = @min(self.scroll.x + event.amount.x, 0);
-            self.scroll.y = @min(self.scroll.y + event.amount.y, 0);
+            self.scroll.x = @max(self.scroll.x - event.amount.x, 0);
+            self.scroll.y = @max(self.scroll.y - event.amount.y, 0);
         },
     }
 }
 
 pub fn draw(self: PianoRoll, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queue) !void {
-    try queue.drawSprite9Patch(.sect_red, rect);
-
     const pat_i = self.pat_i orelse return;
 
     try queue.clip(rect);
@@ -141,10 +139,14 @@ pub fn draw(self: PianoRoll, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queu
     try queue.unclip();
 }
 
+pub fn totalHeight(_: Ctx) f32 {
+    return std.math.maxInt(u8) * pitch_height;
+}
+
 /// Returns the cursor target at the given position.
 fn pick(self: PianoRoll, pat: Track.Pattern, pos: math.Vec2(f32), off: math.Vec2(f32)) Target {
-    const tick: u16 = @intFromFloat((pos.x - off.x - self.scroll.x) / tick_width);
-    const pitch: u8 = @intFromFloat((pos.y - off.y - self.scroll.y) / pitch_height);
+    const tick: u16 = @intFromFloat((pos.x - off.x + self.scroll.x) / tick_width);
+    const pitch: u8 = @intFromFloat((pos.y - off.y + self.scroll.y) / pitch_height);
 
     for (pat.notes, 0..) |note, note_i|
         if (note.first_tick <= tick and note.last_tick >= tick and note.pitch == pitch)
@@ -161,7 +163,7 @@ fn pick(self: PianoRoll, pat: Track.Pattern, pos: math.Vec2(f32), off: math.Vec2
 /// Returns the position corresponding to the given tick and pitch.
 fn project(self: PianoRoll, tick: u16, pitch: u8, off: math.Vec2(f32)) math.Vec2(f32) {
     return .{
-        .x = @as(f32, @floatFromInt(tick)) * tick_width + self.scroll.x + off.x,
-        .y = @as(f32, @floatFromInt(pitch)) * pitch_height + self.scroll.y + off.y,
+        .x = @as(f32, @floatFromInt(tick)) * tick_width + off.x - self.scroll.x,
+        .y = @as(f32, @floatFromInt(pitch)) * pitch_height + off.y - self.scroll.y,
     };
 }

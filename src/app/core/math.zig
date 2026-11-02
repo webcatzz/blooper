@@ -152,6 +152,8 @@ pub fn Color(comptime T: type) type {
     };
 }
 
+pub const Axis = enum { x, y };
+
 pub const Side = enum {
     left,
     right,

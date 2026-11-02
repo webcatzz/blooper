@@ -256,8 +256,12 @@ pub const Sprite = enum {
     sect_green,
     sect_blue,
     sect_purple,
+    playhead,
+    frame,
     scroll_thumb,
     scroll_track,
+    scroll_ticks_h,
+    scroll_ticks_v,
     outline,
 
     const info: std.EnumArray(Sprite, Info) = .init(@import("spr_info"));

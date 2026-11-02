@@ -18,8 +18,8 @@ ctx: Ctx,
 render_queue: render.Queue,
 synth_buf: []f32,
 
-timeline: Timeline = .{},
-piano_roll: PianoRoll = .{},
+timeline: ui.ScrollBox(Timeline) = .{ .inner = .{} },
+piano_roll: ui.ScrollBox(PianoRoll) = .{ .inner = .{} },
 
 /// The scale at which the application renders.
 const scale = 4;
@@ -38,7 +38,7 @@ pub fn init(gpa: std.mem.Allocator, _: std.Io) !App {
         .ctx = ctx,
         .render_queue = render_queue,
         .synth_buf = synth_buf,
-        .piano_roll = .{ .pat_i = 0 },
+        .piano_roll = .{ .inner = .{ .pat_i = 0 } },
     };
 }
 

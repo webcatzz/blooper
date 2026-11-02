@@ -86,12 +86,12 @@ pub fn respond(self: *Timeline, ctx: *Ctx, rect: math.Rect(f32), comptime event_
 
                     .sect_start => |sect_coords| {
                         const sect = &ctx.edit.track.channels[sect_coords.chan_i].sections[sect_coords.sect_i];
-                        sect.first_tick = @min(sect.last_tick, @as(u64, @trunc((ctx.input.cursor_pos.x - self.scroll.x) / tick_width)));
+                        sect.first_tick = @min(sect.last_tick, @as(u64, @trunc((ctx.input.cursor_pos.x + self.scroll.x) / tick_width)));
                     },
 
                     .sect_end => |sect_coords| {
                         const sect = &ctx.edit.track.channels[sect_coords.chan_i].sections[sect_coords.sect_i];
-                        sect.last_tick = @max(sect.first_tick, @as(u64, @trunc((ctx.input.cursor_pos.x - self.scroll.x) / tick_width)));
+                        sect.last_tick = @max(sect.first_tick, @as(u64, @trunc((ctx.input.cursor_pos.x + self.scroll.x) / tick_width)));
                     },
 
                     else => {},
@@ -99,17 +99,16 @@ pub fn respond(self: *Timeline, ctx: *Ctx, rect: math.Rect(f32), comptime event_
         },
 
         .scroll => {
-            self.scroll.x = @min(self.scroll.x + event.amount.x, 0);
-            self.scroll.y = @min(self.scroll.y + event.amount.y, 0);
+            self.scroll.x = @max(self.scroll.x - event.amount.x, 0);
+            self.scroll.y = @max(self.scroll.y - event.amount.y, 0);
         },
     }
 }
 
 pub fn draw(self: Timeline, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queue) !void {
-    try queue.drawSprite9Patch(.sect_blue, rect);
     try queue.clip(rect);
 
-    const min_chan_i: u16 = @trunc(-self.scroll.y / chan_height);
+    const min_chan_i: u16 = @trunc(self.scroll.y / chan_height);
     const max_chan_i = @min(min_chan_i + @as(u16, @trunc(rect.h / chan_height)) + 1, ctx.edit.track.channels.len);
 
     for (ctx.edit.track.channels[min_chan_i..max_chan_i], min_chan_i..) |chan, chan_i| {
@@ -142,10 +141,14 @@ pub fn draw(self: Timeline, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queue
     try queue.unclip();
 }
 
+pub fn totalHeight(ctx: Ctx) f32 {
+    return @as(f32, @floatFromInt(ctx.edit.track.channels.len)) * chan_height;
+}
+
 /// Returns the cursor target at the given position.
 fn pick(self: Timeline, track: Track, pos: math.Vec2(f32), off: math.Vec2(f32)) Target {
-    const tick: u64 = @intFromFloat((pos.x - off.x - self.scroll.x) / tick_width);
-    const chan_i: u8 = @intFromFloat((pos.y - off.y - self.scroll.y) / chan_height);
+    const tick: u64 = @intFromFloat((pos.x - off.x + self.scroll.x) / tick_width);
+    const chan_i: u8 = @intFromFloat((pos.y - off.y + self.scroll.y) / chan_height);
 
     if (chan_i >= track.channels.len)
         return .none;
@@ -167,7 +170,7 @@ fn pick(self: Timeline, track: Track, pos: math.Vec2(f32), off: math.Vec2(f32)) 
 /// Returns the position corresponding to the given channel index and tick.
 fn project(self: Timeline, chan_i: u16, tick: u64, off: math.Vec2(f32)) math.Vec2(f32) {
     return .{
-        .x = @as(f32, @floatFromInt(tick)) * tick_width + self.scroll.x + off.x,
-        .y = @as(f32, @floatFromInt(chan_i)) * chan_height + self.scroll.y + off.y,
+        .x = @as(f32, @floatFromInt(tick)) * tick_width + off.x - self.scroll.x,
+        .y = @as(f32, @floatFromInt(chan_i)) * chan_height + off.y - self.scroll.y,
     };
 }
