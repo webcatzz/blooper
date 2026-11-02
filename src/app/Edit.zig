@@ -184,6 +184,38 @@ pub fn insertPattern(self: *Edit) !u16 {
     return idx;
 }
 
+/// Inserts the given note into the pattern with the given index. Returns the
+/// new index of the note.
+pub fn insertNote(self: *Edit, pat_i: u16, note: Track.Note) !u16 {
+    if (self.track.patterns[pat_i].notes.len >= std.math.maxInt(u16) - 1) {
+        @branchHint(.cold);
+        return error.IndexOverflow;
+    }
+
+    if (self.track.patterns[pat_i].notes.len >= self.note_caps[pat_i]) {
+        const old_cap = self.note_caps[pat_i];
+
+        const note_buf: []Track.Note = try self.gpa.realloc(
+            self.track.patterns[pat_i].notes.ptr[0..old_cap],
+            std.ArrayList(Track.Note).growCapacity(old_cap + 1),
+        );
+        self.track.patterns[pat_i].notes.ptr = note_buf.ptr;
+        self.note_caps[pat_i] = note_buf.len;
+    }
+
+    const idx: u16 = @truncate(self.track.patterns[pat_i].notes.len);
+    self.track.patterns[pat_i].notes.len += 1;
+    self.track.patterns[pat_i].notes[idx] = note;
+    return idx;
+}
+
+/// Removes the note with the given index from the pattern with the given index.
+pub fn removeNote(self: *Edit, pat_i: u16, note_i: u16) void {
+    const notes = &self.track.patterns[pat_i].notes;
+    @memmove(notes.*[note_i .. notes.len - 1], notes.*[note_i + 1 ..]);
+    notes.len -= 1;
+}
+
 pub fn undo(self: *Edit) bool {
     _ = self;
 }
