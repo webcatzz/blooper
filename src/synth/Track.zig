@@ -22,7 +22,7 @@ pub const Note = struct {
     first_tick: u16,
     last_tick: u16,
     pitch: u8,
-    volume: u8,
+    volume: u8 = 0xff,
 };
 
 pub const Instrument = struct {
