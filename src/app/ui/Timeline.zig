@@ -124,7 +124,7 @@ pub fn draw(self: Timeline, ctx: Ctx, queue: *render.Queue) !void {
         .sect, .sect_start, .sect_end => |coords| {
             const sect = ctx.edit.track.channels[coords.chan_i].sections[coords.sect_i];
             const pos = self.project(coords.chan_i, sect.first_tick);
-            try queue.drawSprite9Patch(.note_outline, .{
+            try queue.drawSprite9Patch(.outline, .{
                 .x = pos.x - 2,
                 .y = pos.y - 2,
                 .w = @as(f32, @floatFromInt(sect.last_tick - sect.first_tick)) * tick_width + 4,

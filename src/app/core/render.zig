@@ -251,7 +251,14 @@ pub const Sprite = enum {
     note_green,
     note_blue,
     note_purple,
-    note_outline,
+    sect_red,
+    sect_yellow,
+    sect_green,
+    sect_blue,
+    sect_purple,
+    scroll_thumb,
+    scroll_track,
+    outline,
 
     const info: std.EnumArray(Sprite, Info) = .init(@import("spr_info"));
 
