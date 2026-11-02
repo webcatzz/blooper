@@ -113,6 +113,7 @@ pub fn run(comptime T: type, init: std.process.Init) void {
         .cleanup_cb = impl.sokolCleanup,
         .frame_cb = impl.sokolFrame,
         .event_cb = impl.sokolEvent,
+        .logger = .{ .func = sokol.log.func },
     });
 }
 
