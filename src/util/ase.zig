@@ -7,22 +7,22 @@
 const std = @import("std");
 
 /// Options for reading an Aseprite file.
-const Options = struct {
+pub const Options = struct {
     read_data: bool = false,
     read_slices: bool = false,
 };
 
 /// A slice in an Aseprite file.
-const Slice = struct {
+pub const Slice = struct {
     name: []const u8,
-    x: f32,
-    y: f32,
-    w: f32,
-    h: f32,
-    center_x: f32,
-    center_y: f32,
-    center_w: f32,
-    center_h: f32,
+    x: u32,
+    y: u32,
+    w: u32,
+    h: u32,
+    center_x: u32,
+    center_y: u32,
+    center_w: u32,
+    center_h: u32,
 };
 
 /// Reads Aseprite file data from `reader`.
@@ -36,7 +36,7 @@ const Slice = struct {
 /// - Only reads image data if `opts.read_data` is `true`.
 ///     - Only supports image cels (not linked or tilemap cels).
 /// - Only reads slice chunks if `opts.read_slices` is `true`.
-///     - Slices' positions must not be negative (i.e. x >= 0, y >= 0).
+///     - Clamps slices' positions to positive values (i.e. x >= 0, y >= 0).
 /// - Discards all other chunks.
 ///
 /// If `opts.read_data` is true, the returned `data` buffer is owned by the
@@ -79,7 +79,7 @@ pub fn read(reader: *std.Io.Reader, gpa: std.mem.Allocator, comptime opts: Optio
     if (opts.read_data) @memset(data, 0);
     errdefer if (opts.read_data) gpa.free(data);
 
-    const slices =
+    var slices =
         if (opts.read_slices)
             std.ArrayList(Slice).empty
         else {};
@@ -148,28 +148,25 @@ pub fn read(reader: *std.Io.Reader, gpa: std.mem.Allocator, comptime opts: Optio
             0x2022 => { // Slice chunk
                 if (!opts.read_slices) continue :chunk_switch 0;
 
+                var slice: Slice = undefined;
+
                 const slice_key_count = try reader.takeInt(u32, .little);
                 const slice_flags = try reader.takeInt(u32, .little);
                 try reader.discardAll(4); // Discards reserved bytes
 
                 const name_len = try reader.takeInt(u16, .little);
-                const name = try reader.readAllocAll(gpa, name_len);
+                slice.name = try reader.readAllocAll(gpa, name_len);
+                errdefer gpa.free(slice.name);
 
                 if (try reader.takeInt(u32, .little) == 0) {
-                    var slice: Slice = undefined;
-
-                    try reader.discardAll(4); // Discards frame number
-                    slice.x = try reader.takeInt(i32, .little);
-                    slice.y = try reader.takeInt(i32, .little);
+                    slice.x = @max(try reader.takeInt(i32, .little), 0);
+                    slice.y = @max(try reader.takeInt(i32, .little), 0);
                     slice.w = try reader.takeInt(u32, .little);
                     slice.h = try reader.takeInt(u32, .little);
 
-                    if (slice.x < 0 or slice.y < 0)
-                        return error.NegativeSlicePosition;
-
                     if (slice_flags & 0b1 != 0) {
-                        slice.center_x = try reader.takeInt(i32, .little);
-                        slice.center_y = try reader.takeInt(i32, .little);
+                        slice.center_x = @max(try reader.takeInt(i32, .little), 0);
+                        slice.center_y = @max(try reader.takeInt(i32, .little), 0);
                         slice.center_w = try reader.takeInt(u32, .little);
                         slice.center_h = try reader.takeInt(u32, .little);
                     } else {
@@ -183,16 +180,16 @@ pub fn read(reader: *std.Io.Reader, gpa: std.mem.Allocator, comptime opts: Optio
                         try reader.discardAll(8); // Discards pivot position
 
                     try slices.append(gpa, slice);
-                } else { // Discards slices after first frame
-                    gpa.free(name); // Frees name
+                } else { // Discards slice if after first frame
+                    gpa.free(slice.name);
                     try reader.discardAll(16 +
-                        16 * @intFromBool(slice_flags & 0b1 != 0) +
-                        8 * @intFromBool(slice_flags & 0b10 != 0)); // Discards rest of slice key
+                        @as(usize, 16) * @intFromBool(slice_flags & 0b1 != 0) +
+                        @as(usize, 8) * @intFromBool(slice_flags & 0b10 != 0)); // Discards rest of slice key
                 }
 
                 try reader.discardAll((slice_key_count - 1) * (20 +
-                    16 * @intFromBool(slice_flags & 0b1 != 0) +
-                    8 * @intFromBool(slice_flags & 0b10 != 0))); // Discards other slice keys
+                    @as(usize, 16) * @intFromBool(slice_flags & 0b1 != 0) +
+                    @as(usize, 8) * @intFromBool(slice_flags & 0b10 != 0))); // Discards other slice keys
             },
 
             else => try reader.discardAll(chunk_size), // Discards other chunks
@@ -203,6 +200,6 @@ pub fn read(reader: *std.Io.Reader, gpa: std.mem.Allocator, comptime opts: Optio
         .width = if (opts.read_data) width else {},
         .height = if (opts.read_data) height else {},
         .data = if (opts.read_data) data else {},
-        .slices = if (opts.read_slices) slices.toOwnedSlice(gpa) else {},
+        .slices = if (opts.read_slices) try slices.toOwnedSlice(gpa) else {},
     };
 }
