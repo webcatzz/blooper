@@ -1,9 +1,9 @@
 //! Rendering.
 
+const ase = @import("../../util/ase.zig");
 const builtin = @import("builtin");
 const loop = @import("loop.zig");
 const math = @import("math.zig");
-const Png = @import("../../util/Png.zig");
 const shd_basic = @import("shd_basic");
 const sokol = @import("sokol");
 const std = @import("std");
@@ -320,28 +320,24 @@ pub fn heightf() f32 {
 
 /// Loads the spritesheet.
 fn loadSpritesheet(gpa: std.mem.Allocator, io: std.Io) !sokol.gfx.Image {
-    const file = try std.Io.Dir.cwd().openFile(io, "res/spr.png", .{});
+    const file = try std.Io.Dir.cwd().openFile(io, "res/spr.aseprite", .{});
     defer file.close(io);
     var file_buf: [32]u8 = undefined;
     var file_reader = file.reader(io, &file_buf);
 
-    const png = try Png.read(gpa, &file_reader.interface);
-    defer gpa.free(png.data);
+    const img = try ase.read(&file_reader.interface, gpa, .{ .read_data = true });
+    defer gpa.free(img.data);
 
     const gpu_img = sokol.gfx.makeImage(.{
         .type = ._2D,
-        .width = @intCast(png.width),
-        .height = @intCast(png.height),
+        .width = img.width,
+        .height = img.height,
         .usage = .{ .immutable = true, .write_unsealed = true },
     });
 
     sokol.gfx.writeImageUnsealed(.{
-        .src = .{ .data = .{ .ptr = png.data.ptr, .size = png.data.len } },
+        .src = .{ .data = .{ .ptr = img.data.ptr, .size = img.data.len } },
         .dst = .{ .image = gpu_img },
-        .size = .{
-            .width = @intCast(png.width),
-            .height = @intCast(png.height),
-        },
     });
 
     sokol.gfx.sealImage(gpu_img);
