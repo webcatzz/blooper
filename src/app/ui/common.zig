@@ -58,10 +58,10 @@ pub fn ScrollBox(comptime T: type) type {
 
         pub fn respond(self: *ScrollBox(T), ctx: *Ctx, rect: math.Rect(f32), comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
             try self.inner.respond(ctx, .{
-                .x = rect.x,
-                .y = rect.y,
-                .w = rect.w - scrollbar_width,
-                .h = rect.h - scrollbar_width,
+                .x = rect.x + 1,
+                .y = rect.y + 1,
+                .w = rect.w - scrollbar_width - 1,
+                .h = rect.h - scrollbar_width - 1,
             }, event_type, event);
         }
 
@@ -71,15 +71,15 @@ pub fn ScrollBox(comptime T: type) type {
 
             try queue.drawSprite9Patch(.frame, rect);
 
-            const total_h: f32 = T.totalHeight(ctx);
+            const total_size: math.Vec2(f32) = T.totalSize(ctx);
 
-            try scroll_bar.draw(.x, self.inner.scroll.x, total_h, .{
+            try scroll_bar.draw(.x, self.inner.scroll.x, total_size.x, .{
                 .x = rect.x,
                 .y = rect.y + inner_h,
                 .w = inner_w,
                 .h = scrollbar_width,
             }, queue);
-            try scroll_bar.draw(.y, self.inner.scroll.y, total_h, .{
+            try scroll_bar.draw(.y, self.inner.scroll.y, total_size.y, .{
                 .x = rect.x + inner_w,
                 .y = rect.y,
                 .w = scrollbar_width,
@@ -87,10 +87,10 @@ pub fn ScrollBox(comptime T: type) type {
             }, queue);
 
             try self.inner.draw(ctx, .{
-                .x = rect.x,
-                .y = rect.y,
-                .w = inner_w,
-                .h = inner_h,
+                .x = rect.x + 1,
+                .y = rect.y + 1,
+                .w = inner_w - 1,
+                .h = inner_h - 1,
             }, queue);
         }
     };

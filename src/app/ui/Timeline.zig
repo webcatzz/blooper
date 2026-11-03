@@ -141,8 +141,11 @@ pub fn draw(self: Timeline, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queue
     try queue.unclip();
 }
 
-pub fn totalHeight(ctx: Ctx) f32 {
-    return @as(f32, @floatFromInt(ctx.edit.track.channels.len)) * chan_height;
+pub fn totalSize(ctx: Ctx) math.Vec2(f32) {
+    return .{
+        .x = std.math.floatMax(f32),
+        .y = @as(f32, @floatFromInt(ctx.edit.track.channels.len)) * chan_height,
+    };
 }
 
 /// Returns the cursor target at the given position.

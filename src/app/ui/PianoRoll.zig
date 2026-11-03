@@ -139,8 +139,11 @@ pub fn draw(self: PianoRoll, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queu
     try queue.unclip();
 }
 
-pub fn totalHeight(_: Ctx) f32 {
-    return std.math.maxInt(u8) * pitch_height;
+pub fn totalSize(_: Ctx) math.Vec2(f32) {
+    return .{
+        .x = @as(f32, std.math.maxInt(u16)) * tick_width,
+        .y = @as(f32, std.math.maxInt(u8)) * pitch_height,
+    };
 }
 
 /// Returns the cursor target at the given position.
