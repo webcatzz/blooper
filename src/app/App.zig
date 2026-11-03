@@ -66,7 +66,13 @@ pub fn iter(self: *App) !void {
     // Streams audio
 
     if (self.ctx.is_playing) {
-        // TODO
+        std.debug.assert(audio.channelCount() == 1);
+        const buf = self.synth_buf[0..@min(audio.framesNeeded(), self.synth_buf.len)];
+        if (buf.len == 0) return;
+
+        @memset(buf, 0);
+        try self.ctx.synth.run(self.ctx.gpa, self.ctx.edit.track, audio.sampleRate(), buf);
+        _ = audio.push(buf.ptr, @intCast(buf.len));
     }
 }
 

@@ -99,9 +99,9 @@ pub fn run(self: *Synth, gpa: std.mem.Allocator, track: Track, smp_rate: u32, ou
 
         smp_i += run_len;
         self.smps_synthed += run_len;
+        self.smps_left_in_tick -= run_len;
     }
 }
-
 /// Seeks to the given position, in ticks.
 pub fn seek(self: *Synth, tick: u64) void {
     self.tick = tick;
