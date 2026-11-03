@@ -108,6 +108,11 @@ pub const Queue = struct {
         try self.draw(&.{ vertices[0], vertices[1], vertices[3], vertices[0], vertices[3], vertices[2] });
     }
 
+    pub fn drawSliceRepeat(self: *Queue, src: math.Rect(f32), dst: math.Rect(f32)) !void {
+        // TODO repeat
+        try self.drawSliceStretch(src, dst);
+    }
+
     pub fn drawSlice9Patch(self: *Queue, src: math.Rect(f32), border: math.Sides(f32), dst: math.Rect(f32)) !void {
         const Slice = struct { off: f32, len: f32 };
         const SlicePair = struct { src: Slice, dst: Slice };
@@ -154,6 +159,10 @@ pub const Queue = struct {
 
     pub fn drawSpriteStretch(self: *Queue, spr: Sprite, dst: math.Rect(f32)) !void {
         try self.drawSliceStretch(Sprite.info.get(spr).rect, dst);
+    }
+
+    pub fn drawSpriteRepeat(self: *Queue, spr: Sprite, dst: math.Rect(f32)) !void {
+        try self.drawSliceRepeat(Sprite.info.get(spr).rect, dst);
     }
 
     pub fn drawSprite9Patch(self: *Queue, spr: Sprite, dst: math.Rect(f32)) !void {
