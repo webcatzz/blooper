@@ -15,7 +15,7 @@ pat_i: ?u16 = null,
 
 const tick_width = 0.25;
 const pitch_height = 6;
-const note_edge_width = 4;
+const note_edge_width = 2;
 
 /// "Floating" coordinates in the pattern.
 const Coords = struct { tick: u16, pitch: u8 };
@@ -153,9 +153,9 @@ fn pick(self: PianoRoll, pat: Track.Pattern, pos: math.Vec2(f32), off: math.Vec2
 
     for (pat.notes, 0..) |note, note_i|
         if (note.first_tick <= tick and note.last_tick >= tick and note.pitch == pitch)
-            return if (tick - note.first_tick < note_edge_width)
+            return if (tick - note.first_tick < note_edge_width / tick_width)
                 .{ .note_start = @intCast(note_i) }
-            else if (note.last_tick - tick < note_edge_width)
+            else if (note.last_tick - tick < note_edge_width / tick_width)
                 .{ .note_end = @intCast(note_i) }
             else
                 .{ .note = @intCast(note_i) };

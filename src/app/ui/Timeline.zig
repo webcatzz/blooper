@@ -13,7 +13,7 @@ sel: Selection = .none,
 
 const tick_width = 0.25;
 const chan_height = 32;
-const sect_edge_width = 4;
+const sect_edge_width = 2;
 
 /// A position in a channel.
 const ChannelPos = struct { chan_i: u16, tick: u64 };
@@ -160,9 +160,9 @@ fn pick(self: Timeline, track: Track, pos: math.Vec2(f32), off: math.Vec2(f32)) 
 
     for (chan.sections, 0..) |sect, sect_i|
         if (sect.first_tick <= tick and sect.last_tick >= tick)
-            return if (tick - sect.first_tick < sect_edge_width)
+            return if (tick - sect.first_tick < sect_edge_width / tick_width)
                 .{ .sect_start = .{ .chan_i = chan_i, .sect_i = @intCast(sect_i) } }
-            else if (sect.last_tick - tick < sect_edge_width)
+            else if (sect.last_tick - tick < sect_edge_width / tick_width)
                 .{ .sect_end = .{ .chan_i = chan_i, .sect_i = @intCast(sect_i) } }
             else
                 .{ .sect = .{ .chan_i = chan_i, .sect_i = @intCast(sect_i) } };
