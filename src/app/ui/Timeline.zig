@@ -138,6 +138,14 @@ pub fn draw(self: Timeline, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queue
         },
     }
 
+    if (ctx.is_playing)
+        try queue.drawSpriteStretch(.playhead, .{
+            .x = rect.x - self.scroll.x + @as(f32, @floatFromInt(ctx.synth.tick)) * tick_width,
+            .y = rect.y,
+            .w = 3,
+            .h = rect.h,
+        });
+
     try queue.unclip();
 }
 
