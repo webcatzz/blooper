@@ -1,6 +1,7 @@
 const Ctx = @import("../Ctx.zig");
 const input = @import("../core/input.zig");
 const math = @import("../core/math.zig");
+const pitch_util = @import("../../synth/pitch.zig");
 const render = @import("../core/render.zig");
 const std = @import("std");
 const Track = @import("../../synth/Track.zig");
@@ -101,7 +102,7 @@ pub fn respond(self: *PianoRoll, ctx: *Ctx, rect: math.Rect(f32), comptime event
 
         .scroll => {
             self.scroll.x = @max(self.scroll.x - event.amount.x, 0);
-            self.scroll.y = @max(self.scroll.y - event.amount.y, 0);
+            self.scroll.y = @min(self.scroll.y - event.amount.y, 0);
         },
     }
 }
@@ -148,8 +149,8 @@ pub fn totalSize(_: Ctx) math.Vec2(f32) {
 
 /// Returns the cursor target at the given position.
 fn pick(self: PianoRoll, pat: Track.Pattern, pos: math.Vec2(f32), off: math.Vec2(f32)) Target {
-    const tick: u16 = @intFromFloat((pos.x - off.x + self.scroll.x) / tick_width);
-    const pitch: u8 = @intFromFloat((pos.y - off.y + self.scroll.y) / pitch_height);
+    const tick = self.tickFromX(pos.x, off.x);
+    const pitch = self.pitchFromY(pos.y, off.y);
 
     for (pat.notes, 0..) |note, note_i|
         if (note.first_tick <= tick and note.last_tick >= tick and note.pitch == pitch)
@@ -166,7 +167,23 @@ fn pick(self: PianoRoll, pat: Track.Pattern, pos: math.Vec2(f32), off: math.Vec2
 /// Returns the position corresponding to the given tick and pitch.
 fn project(self: PianoRoll, tick: u16, pitch: u8, off: math.Vec2(f32)) math.Vec2(f32) {
     return .{
-        .x = @as(f32, @floatFromInt(tick)) * tick_width + off.x - self.scroll.x,
-        .y = @as(f32, @floatFromInt(pitch)) * pitch_height + off.y - self.scroll.y,
+        .x = self.xFromTick(tick, off.x),
+        .y = self.yFromPitch(pitch, off.y),
     };
+}
+
+fn tickFromX(self: PianoRoll, x: f32, rect_x: f32) u16 {
+    return @trunc((x - rect_x + self.scroll.x) / tick_width);
+}
+
+fn xFromTick(self: PianoRoll, tick: u16, rect_x: f32) f32 {
+    return rect_x - self.scroll.x + @as(f32, tick) * tick_width;
+}
+
+fn pitchFromY(self: PianoRoll, y: f32, rect_y: f32) u8 {
+    return @as(u8, @trunc((-y + rect_y - self.scroll.y) / pitch_height)) + 1;
+}
+
+fn yFromPitch(self: PianoRoll, pitch: u8, rect_y: f32) f32 {
+    return rect_y - self.scroll.y - @as(f32, pitch) * pitch_height;
 }
