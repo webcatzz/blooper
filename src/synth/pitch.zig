@@ -2,6 +2,8 @@
 //!
 //! Constants' values correspond to the MIDI standard.
 
+const std = @import("std");
+
 pub const c0 = 12;
 pub const c0_sharp = 13;
 pub const d0 = 14;
@@ -143,21 +145,24 @@ pub fn color(pitch: u8) enum { white, black } {
 }
 
 /// Returns a human-readable name for the given pitch.
-pub fn name(pitch: u8) []const u8 {
-    return switch (pitch) {
-        inline else => |p| switch (class(p)) {
-            .c => "C",
-            .c_sharp => "C#",
-            .d => "D",
-            .d_sharp => "D#",
-            .e => "E",
-            .f => "F",
-            .f_sharp => "F#",
-            .g => "G",
-            .g_sharp => "G#",
-            .a => "A",
-            .a_sharp => "A#",
-            .b => "B",
-        },
+///
+/// Stores the resulting string in `buf` and returns a slice containing it.
+pub fn name(pitch: u8, buf: *[4]u8) []u8 {
+    const class_str = switch (class(pitch)) {
+        .c => "C",
+        .c_sharp => "C#",
+        .d => "D",
+        .d_sharp => "D#",
+        .e => "E",
+        .f => "F",
+        .f_sharp => "F#",
+        .g => "G",
+        .g_sharp => "G#",
+        .a => "A",
+        .a_sharp => "A#",
+        .b => "B",
     };
+
+    return std.mem.print(buf, "{s}{}", .{ class_str, octave(pitch) }) catch
+        unreachable;
 }
