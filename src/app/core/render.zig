@@ -176,7 +176,9 @@ pub const Queue = struct {
         for (text) |char| {
             const spr: Sprite = switch (char) {
                 'a'...'z' => @fromBackingInt(@intCast(char - 'a' + @backingInt(Sprite.font_a))),
+                'A'...'Z' => @fromBackingInt(@intCast(char - 'A' + @backingInt(Sprite.font_a))),
                 '0'...'9' => @fromBackingInt(@intCast(char - '0' + @backingInt(Sprite.font_0))),
+                '#' => .font_hash,
                 ' ' => {
                     x += 3;
                     continue;
@@ -330,6 +332,7 @@ pub const Sprite = enum {
     font_7,
     font_8,
     font_9,
+    font_hash,
 
     const info: std.EnumArray(Sprite, Info) = .init(@import("spr_info"));
 
