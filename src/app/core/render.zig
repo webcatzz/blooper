@@ -170,6 +170,27 @@ pub const Queue = struct {
         try self.drawSlice9Patch(info.rect, info.border, dst);
     }
 
+    pub fn drawText(self: *Queue, text: []const u8, pos: math.Vec2(f32)) !void {
+        var x = pos.x;
+
+        for (text) |char| {
+            const spr: Sprite = switch (char) {
+                'a'...'z' => @fromBackingInt(@intCast(char - 'a' + @backingInt(Sprite.font_a))),
+                '0'...'9' => @fromBackingInt(@intCast(char - '0' + @backingInt(Sprite.font_0))),
+                ' ' => {
+                    x += 3;
+                    continue;
+                },
+
+                else => continue,
+            };
+
+            const spr_rect = Sprite.info.get(spr).rect;
+            try self.drawSlice(spr_rect, .{ .x = x, .y = pos.y });
+            x += spr_rect.w - 1;
+        }
+    }
+
     pub fn clip(self: *Queue, rect: math.Rect(f32)) !void {
         try self.cmd_buf.append(loop.gpa, .{ .clip = rect });
     }
@@ -272,6 +293,43 @@ pub const Sprite = enum {
     scroll_ticks_h,
     scroll_ticks_v,
     outline,
+
+    font_a,
+    font_b,
+    font_c,
+    font_d,
+    font_e,
+    font_f,
+    font_g,
+    font_h,
+    font_i,
+    font_j,
+    font_k,
+    font_l,
+    font_m,
+    font_n,
+    font_o,
+    font_p,
+    font_q,
+    font_r,
+    font_s,
+    font_t,
+    font_u,
+    font_v,
+    font_w,
+    font_x,
+    font_y,
+    font_z,
+    font_0,
+    font_1,
+    font_2,
+    font_3,
+    font_4,
+    font_5,
+    font_6,
+    font_7,
+    font_8,
+    font_9,
 
     const info: std.EnumArray(Sprite, Info) = .init(@import("spr_info"));
 
