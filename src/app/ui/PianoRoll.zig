@@ -88,12 +88,12 @@ pub fn respond(self: *PianoRoll, ctx: *Ctx, rect: math.Rect(f32), comptime event
 
                     .note_start => |note_i| {
                         const note = &ctx.edit.track.patterns[pat_i].notes[note_i];
-                        note.first_tick = @min(note.last_tick, @as(u16, @trunc((ctx.input.cursor_pos.x + self.scroll.x) / tick_width)));
+                        note.first_tick = @min(note.last_tick, self.tickFromX(ctx.input.cursor_pos.x, rect.x));
                     },
 
                     .note_end => |note_i| {
                         const note = &ctx.edit.track.patterns[pat_i].notes[note_i];
-                        note.last_tick = @max(note.first_tick, @as(u16, @trunc((ctx.input.cursor_pos.x + self.scroll.x) / tick_width)));
+                        note.last_tick = @max(note.first_tick, self.tickFromX(ctx.input.cursor_pos.x, rect.x));
                     },
 
                     else => {},
@@ -173,7 +173,7 @@ fn project(self: PianoRoll, tick: u16, pitch: u8, off: math.Vec2(f32)) math.Vec2
 }
 
 fn tickFromX(self: PianoRoll, x: f32, rect_x: f32) u16 {
-    return @trunc((x - rect_x + self.scroll.x) / tick_width);
+    return @trunc(@max(x - rect_x + self.scroll.x, 0) / tick_width);
 }
 
 fn xFromTick(self: PianoRoll, tick: u16, rect_x: f32) f32 {
@@ -181,7 +181,7 @@ fn xFromTick(self: PianoRoll, tick: u16, rect_x: f32) f32 {
 }
 
 fn pitchFromY(self: PianoRoll, y: f32, rect_y: f32) u8 {
-    return @as(u8, @trunc((-y + rect_y - self.scroll.y) / pitch_height)) + 1;
+    return @as(u8, @trunc(@max(-y + rect_y - self.scroll.y, 0) / pitch_height)) + 1;
 }
 
 fn yFromPitch(self: PianoRoll, pitch: u8, rect_y: f32) f32 {
