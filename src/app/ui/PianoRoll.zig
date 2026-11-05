@@ -112,6 +112,15 @@ pub fn draw(self: PianoRoll, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queu
 
     try queue.clip(rect);
 
+    if (rect.contains(ctx.input.cursor_pos)) {
+        const pitch = self.pitchFromY(ctx.input.cursor_pos.y, rect.y);
+        var name_buf: [4]u8 = undefined;
+        try queue.drawText(
+            pitch_util.name(pitch, &name_buf),
+            .{ .x = rect.x, .y = self.yFromPitch(pitch, rect.y) },
+        );
+    }
+
     for (ctx.edit.track.patterns[pat_i].notes) |note| {
         const pos = self.project(note.first_tick, note.pitch, rect.pos());
         try queue.drawSprite9Patch(.note_red, .{
