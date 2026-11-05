@@ -102,6 +102,12 @@ pub fn Rect(comptime T: type) type {
         pub fn size(self: Rect(T)) Vec2(T) {
             return .{ .x = self.w, .y = self.h };
         }
+
+        /// Returns `true` if the rectangle contains the given point.
+        pub fn contains(self: Rect(T), p: Vec2(T)) bool {
+            return p.x >= self.x and p.x <= self.x + self.w and
+                p.y >= self.y and p.y <= self.y + self.h;
+        }
     };
 }
 
