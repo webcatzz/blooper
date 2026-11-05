@@ -10,8 +10,11 @@ const std = @import("std");
 
 /// A queue of rendering operations.
 pub const Queue = struct {
-    cmd_buf: std.ArrayList(Command),
-    vtx_buf: std.ArrayList(Vertex),
+    cmd_buf: std.ArrayList(Command) = .empty,
+    vtx_buf: std.ArrayList(Vertex) = .empty,
+
+    clip_stack: std.ArrayList(math.Rect(f32)) = .empty,
+
     _gpu_vtx_buf: sokol.gfx.Buffer,
     _gpu_img: sokol.gfx.Image,
     _gpu_view: sokol.gfx.View,
@@ -47,9 +50,11 @@ pub const Queue = struct {
             break :init desc;
         });
 
+        const clip_stack: std.ArrayList(math.Rect(f32)) = try .initCapacity(loop.gpa, 64);
+        errdefer clip_stack.deinit(loop.gpa);
+
         return .{
-            .cmd_buf = .empty,
-            .vtx_buf = .empty,
+            .clip_stack = clip_stack,
             ._gpu_vtx_buf = vtx_buf,
             ._gpu_img = img,
             ._gpu_view = view,
@@ -64,6 +69,7 @@ pub const Queue = struct {
     pub fn deinit(self: *Queue) void {
         self.cmd_buf.deinit(loop.gpa);
         self.vtx_buf.deinit(loop.gpa);
+        self.clip_stack.deinit(loop.gpa);
         sokol.gfx.destroyBuffer(self._gpu_vtx_buf);
         sokol.gfx.destroyImage(self._gpu_img);
         sokol.gfx.destroyView(self._gpu_view);
@@ -194,11 +200,16 @@ pub const Queue = struct {
     }
 
     pub fn clip(self: *Queue, rect: math.Rect(f32)) !void {
+        try self.clip_stack.append(loop.gpa, rect);
         try self.cmd_buf.append(loop.gpa, .{ .clip = rect });
     }
 
     pub fn unclip(self: *Queue) !void {
-        try self.cmd_buf.append(loop.gpa, .unclip);
+        _ = self.clip_stack.pop();
+        if (self.clip_stack.last()) |rect|
+            try self.cmd_buf.append(loop.gpa, .{ .clip = rect })
+        else
+            try self.cmd_buf.append(loop.gpa, .unclip);
     }
 
     /// Submits all queued operations to be rendered and clears the queue.
@@ -240,12 +251,12 @@ pub const Queue = struct {
             .size = @sizeOf(shd_basic.VertUniform),
         });
 
-        var vtx_idx: u32 = 0;
+        var vtx_i: u32 = 0;
         for (self.cmd_buf.items) |cmd|
             switch (cmd) {
                 .draw => |vtx_count| {
-                    sokol.gfx.draw(vtx_idx, vtx_count, 1);
-                    vtx_idx += vtx_count;
+                    sokol.gfx.draw(vtx_i, vtx_count, 1);
+                    vtx_i += vtx_count;
                 },
 
                 .clip => |rect| {
@@ -274,6 +285,7 @@ pub const Queue = struct {
 
         self.cmd_buf.clearRetainingCapacity();
         self.vtx_buf.clearRetainingCapacity();
+        self.clip_stack.clearRetainingCapacity();
     }
 };
 
