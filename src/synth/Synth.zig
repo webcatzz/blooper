@@ -24,15 +24,15 @@ const Channel = struct {
         self.inst = chan.instrument;
         self.notes.clearRetainingCapacity();
 
-        const pat = init: {
+        const sect = init: {
             for (chan.sections) |sect|
                 if (sect.first_tick <= tick and sect.last_tick >= tick)
-                    break :init pats[sect.pat_i];
+                    break :init sect;
             return;
         };
 
-        for (pat.notes) |note|
-            if (note.first_tick <= tick and note.last_tick >= tick)
+        for (pats[sect.pat_i].notes) |note|
+            if (sect.first_tick + note.first_tick <= tick and sect.first_tick + note.last_tick >= tick)
                 try self.notes.append(gpa, .{ .pitch = note.pitch, .volume = note.volume });
     }
 
