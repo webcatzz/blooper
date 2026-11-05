@@ -1,5 +1,6 @@
 //! Synthesizes audio from track data.
 
+const pitch_util = @import("pitch.zig");
 const std = @import("std");
 const Track = @import("Track.zig");
 
@@ -38,7 +39,7 @@ const Channel = struct {
     fn synth(self: *Channel, smp_off: usize, smp_rate: u32, output: []f32) void {
         for (self.notes.items) |*note|
             for (output, 0..) |*smp, i| {
-                const phase = @as(f32, @floatFromInt(smp_off + i)) * freqFromPitch(note.pitch) / @as(f32, @floatFromInt(smp_rate));
+                const phase = @as(f32, @floatFromInt(smp_off + i)) * pitch_util.freq(note.pitch) / @as(f32, @floatFromInt(smp_rate));
                 const phase_fract = phase - @trunc(phase);
 
                 smp.* += switch (self.inst.base) {
@@ -95,22 +96,18 @@ pub fn run(self: *Synth, gpa: std.mem.Allocator, track: Track, smp_rate: u32, ou
         const run_len = @min(self.smps_left_in_tick, output.len - smp_i);
 
         for (self.chans.items) |*chan|
-            chan.synth(self.smps_synthed, smp_rate, output[0..run_len]);
+            chan.synth(self.smps_synthed, smp_rate, output[smp_i..][0..run_len]);
 
         smp_i += run_len;
         self.smps_synthed += run_len;
         self.smps_left_in_tick -= run_len;
     }
 }
+
 /// Seeks to the given position, in ticks.
 pub fn seek(self: *Synth, tick: u64) void {
     self.tick = tick;
     self.smps_synthed = 0;
-}
-
-/// Converts from pitch to frequency.
-fn freqFromPitch(pitch: u8) f32 {
-    return 440.0 * @exp2((@as(f32, @floatFromInt(pitch)) - 69.0) / 12.0);
 }
 
 /// Samples a pulse wave with the given duty cycle at the given phase.
