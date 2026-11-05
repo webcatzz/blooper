@@ -108,6 +108,19 @@ pub fn Rect(comptime T: type) type {
             return p.x >= self.x and p.x <= self.x + self.w and
                 p.y >= self.y and p.y <= self.y + self.h;
         }
+
+        /// Returns the intersection of the given rectangles.
+        pub fn intersect(self: Rect(T), other: Rect(T)) Rect(T) {
+            const x = @max(self.x, other.x);
+            const y = @max(self.y, other.y);
+
+            return .{
+                .x = x,
+                .y = y,
+                .w = @min(self.x + self.w, other.x + other.w) - x,
+                .h = @min(self.y + self.h, other.y + other.h) - y,
+            };
+        }
     };
 }
 

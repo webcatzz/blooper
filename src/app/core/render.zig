@@ -200,8 +200,12 @@ pub const Queue = struct {
     }
 
     pub fn clip(self: *Queue, rect: math.Rect(f32)) !void {
-        try self.clip_stack.append(loop.gpa, rect);
-        try self.cmd_buf.append(loop.gpa, .{ .clip = rect });
+        var intersection = rect;
+        for (self.clip_stack.items) |clip_rect|
+            intersection = intersection.intersect(clip_rect);
+
+        try self.clip_stack.append(loop.gpa, intersection);
+        try self.cmd_buf.append(loop.gpa, .{ .clip = intersection });
     }
 
     pub fn unclip(self: *Queue) !void {
