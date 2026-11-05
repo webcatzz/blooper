@@ -114,12 +114,45 @@ pub fn draw(self: Timeline, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queue
     for (ctx.edit.track.channels[min_chan_i..max_chan_i], min_chan_i..) |chan, chan_i| {
         for (chan.sections) |sect| {
             const pos = self.project(@intCast(chan_i), sect.first_tick, rect.pos());
+            const sect_w = @as(f32, @floatFromInt(sect.last_tick - sect.first_tick)) * tick_width;
             try queue.drawSprite9Patch(.sect_red, .{
                 .x = pos.x,
                 .y = pos.y,
-                .w = @as(f32, @floatFromInt(sect.last_tick - sect.first_tick)) * tick_width,
+                .w = sect_w,
                 .h = chan_height,
             });
+
+            const notes = ctx.edit.track.patterns[sect.pat_i].notes;
+            if (notes.len == 0) continue;
+
+            var min_pitch = notes[0].pitch;
+            var max_pitch = min_pitch;
+            for (notes[1..]) |note| {
+                min_pitch = @min(min_pitch, note.pitch);
+                max_pitch = @max(max_pitch, note.pitch);
+            }
+
+            const inner_y = pos.y + 3;
+            const inner_h = chan_height - 6;
+            const pitch_height = inner_h / @as(f32, max_pitch - min_pitch + 1);
+
+            try queue.clip(.{
+                .x = pos.x,
+                .y = inner_y,
+                .w = sect_w,
+                .h = inner_h,
+            });
+
+            for (notes) |note|
+                if (note.first_tick <= sect.last_tick - sect.first_tick)
+                    try queue.drawSprite9Patch(.sect_note_red, .{
+                        .x = pos.x + @as(f32, note.first_tick) * tick_width,
+                        .y = inner_y + (max_pitch - note.pitch) * pitch_height,
+                        .w = @as(f32, note.last_tick - note.first_tick) * tick_width,
+                        .h = pitch_height,
+                    });
+
+            try queue.unclip();
         }
     }
 
