@@ -116,10 +116,19 @@ pub fn draw(self: PianoRoll, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queu
 
     if (rect.contains(ctx.input.cursor_pos)) {
         const pitch = self.pitchFromY(ctx.input.cursor_pos.y, rect.y);
+        const pitch_y = self.yFromPitch(pitch, rect.y);
+
+        try queue.drawSpriteStretch(.pitch_highlight, .{
+            .x = rect.x,
+            .y = pitch_y,
+            .w = rect.w,
+            .h = pitch_height,
+        });
+
         var name_buf: [4]u8 = undefined;
         try queue.drawText(
             pitch_util.name(pitch, &name_buf),
-            .{ .x = rect.x, .y = self.yFromPitch(pitch, rect.y) },
+            .{ .x = rect.x, .y = pitch_y },
         );
     }
 

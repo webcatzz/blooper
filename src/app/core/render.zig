@@ -314,6 +314,7 @@ pub const Sprite = enum {
     note_green,
     note_blue,
     note_purple,
+    pitch_highlight,
     sect_red,
     sect_yellow,
     sect_green,
