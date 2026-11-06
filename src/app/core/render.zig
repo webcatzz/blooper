@@ -201,8 +201,8 @@ pub const Queue = struct {
 
     pub fn clip(self: *Queue, rect: math.Rect(f32)) !void {
         var intersection = rect;
-        for (self.clip_stack.items) |clip_rect|
-            intersection = intersection.intersect(clip_rect);
+        if (self.clip_stack.last()) |last_rect|
+            intersection = intersection.intersect(last_rect);
 
         try self.clip_stack.append(loop.gpa, intersection);
         try self.cmd_buf.append(loop.gpa, .{ .clip = intersection });
