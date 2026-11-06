@@ -79,6 +79,7 @@ pub const Map = struct {
                 self.last_event = .{ .cursor = event };
             },
             .scroll => self.last_event = .{ .scroll = event },
+            else => {},
         }
     }
 

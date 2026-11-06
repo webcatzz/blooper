@@ -11,12 +11,15 @@ pub const event = struct {
     pub const Cursor = struct { pos: math.Vec2(f32) };
     /// A wheel or trackpad is scrolled by some amount.
     pub const Scroll = struct { amount: math.Vec2(f32) };
+    /// A UTF-32 character is input.
+    pub const Char = struct { char: u32 };
 
     /// The type of an input event.
     pub const Type = enum {
         button,
         cursor,
         scroll,
+        char,
     };
 
     /// A union of events of any type.
@@ -24,6 +27,7 @@ pub const event = struct {
         button: event.Button,
         cursor: event.Cursor,
         scroll: event.Scroll,
+        char: event.Char,
     };
 
     /// Returns an event of the given type.
@@ -32,6 +36,7 @@ pub const event = struct {
             .button => event.Button,
             .cursor => event.Cursor,
             .scroll => event.Scroll,
+            .char => event.Char,
         };
     }
 };

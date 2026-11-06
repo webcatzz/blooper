@@ -92,6 +92,10 @@ pub fn run(comptime T: type, init: std.process.Init) void {
                     .amount = .{ .x = event.*.scroll_x, .y = event.*.scroll_y },
                 }),
 
+                .CHAR => state.respond(.char, .{
+                    .char = event.*.char_code,
+                }),
+
                 else => return,
             }) catch {
                 if (@errorReturnTrace()) |trace|

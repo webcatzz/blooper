@@ -104,6 +104,8 @@ pub fn respond(self: *PianoRoll, ctx: *Ctx, rect: math.Rect(f32), comptime event
             self.scroll.x = @max(self.scroll.x - event.amount.x, 0);
             self.scroll.y = @min(self.scroll.y - event.amount.y, 0);
         },
+
+        else => {},
     }
 }
 

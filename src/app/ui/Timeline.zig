@@ -102,6 +102,8 @@ pub fn respond(self: *Timeline, ctx: *Ctx, rect: math.Rect(f32), comptime event_
             self.scroll.x = @max(self.scroll.x - event.amount.x, 0);
             self.scroll.y = @max(self.scroll.y - event.amount.y, 0);
         },
+
+        else => {},
     }
 }
 
