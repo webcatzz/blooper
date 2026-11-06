@@ -8,7 +8,7 @@ const Track = @import("../../synth/Track.zig");
 
 const PianoRoll = @This();
 
-scroll: math.Vec2(f32) = .zero,
+scroll: math.Vec2(f32) = .{ .x = 0, .y = -pitch_util.c4 * pitch_height },
 /// The current user selection.
 sel: Selection = .none,
 /// The index of the current pattern.

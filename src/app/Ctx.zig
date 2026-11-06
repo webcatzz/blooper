@@ -20,9 +20,10 @@ gpa: std.mem.Allocator,
 pub fn init(gpa: std.mem.Allocator) !Ctx {
     var edit: Edit = try .init(gpa);
 
-    _ = try edit.insertPattern();
+    const pat_i = try edit.insertPattern();
     try edit.insertChannel(0, .{ .instrument = .{ .base = .{ .chip_pulse = 0.5 } } });
     try edit.insertChannel(1, .{ .instrument = .{ .base = .{ .chip_pulse = 0.5 } } });
+    _ = try edit.insertSection(0, .{ .first_tick = 0, .last_tick = 384, .pat_i = pat_i });
 
     return .{
         .edit = edit,
