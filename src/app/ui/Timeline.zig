@@ -37,11 +37,11 @@ const Selection = union(enum) {
     sect_end: SectionCoords,
 };
 
-pub fn respond(self: *Timeline, ctx: *Ctx, rect: math.Rect(f32), comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
+pub fn respond(self: *Timeline, ctx: *Ctx, pos: math.Vec2(f32), comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
     switch (event_type) {
         .button => {
             if (ctx.input.wasJustActivated(.accept))
-                switch (self.pick(ctx.edit.track, ctx.input.cursor_pos, rect.pos())) {
+                switch (self.pick(ctx.edit.track, ctx.input.cursor_pos, pos)) {
                     .none => self.sel = .none,
 
                     .chan => |chan_pos| {

@@ -98,7 +98,7 @@ pub fn respond(self: *App, comptime event_type: input.event.Type, event: input.e
 
     const rects = ui.v_split.rects(rect, 0.67);
     if (self.ctx.input.cursor_pos.y < rects[1].y)
-        try self.piano_roll.respond(&self.ctx, rects[0].shrink(ui.frame.inner_padding), event_type, event)
+        try self.piano_roll.respond(&self.ctx, rects[0].pos().add(.{ .x = ui.frame.inner_padding.left, .y = ui.frame.inner_padding.top }), event_type, event)
     else
-        try self.timeline.respond(&self.ctx, rects[1].shrink(ui.frame.inner_padding), event_type, event);
+        try self.timeline.respond(&self.ctx, rects[1].pos().add(.{ .x = ui.frame.inner_padding.left, .y = ui.frame.inner_padding.top }), event_type, event);
 }

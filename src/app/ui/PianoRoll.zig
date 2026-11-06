@@ -37,13 +37,13 @@ const Selection = union(enum) {
     note_end: u16,
 };
 
-pub fn respond(self: *PianoRoll, ctx: *Ctx, rect: math.Rect(f32), comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
+pub fn respond(self: *PianoRoll, ctx: *Ctx, pos: math.Vec2(f32), comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
     switch (event_type) {
         .button => {
             const pat_i = self.pat_i orelse return;
 
             if (ctx.input.wasJustActivated(.accept))
-                switch (self.pick(ctx.edit.track.patterns[pat_i], ctx.input.cursor_pos, rect.pos())) {
+                switch (self.pick(ctx.edit.track.patterns[pat_i], ctx.input.cursor_pos, pos)) {
                     .none => |target| {
                         const note_i = try ctx.edit.insertNote(pat_i, .{
                             .first_tick = target.tick,
@@ -88,12 +88,12 @@ pub fn respond(self: *PianoRoll, ctx: *Ctx, rect: math.Rect(f32), comptime event
 
                     .note_start => |note_i| {
                         const note = &ctx.edit.track.patterns[pat_i].notes[note_i];
-                        note.first_tick = @min(note.last_tick, self.tickFromX(ctx.input.cursor_pos.x, rect.x));
+                        note.first_tick = @min(note.last_tick, self.tickFromX(ctx.input.cursor_pos.x, pos.x));
                     },
 
                     .note_end => |note_i| {
                         const note = &ctx.edit.track.patterns[pat_i].notes[note_i];
-                        note.last_tick = @max(note.first_tick, self.tickFromX(ctx.input.cursor_pos.x, rect.x));
+                        note.last_tick = @max(note.first_tick, self.tickFromX(ctx.input.cursor_pos.x, pos.x));
                     },
 
                     else => {},
