@@ -100,11 +100,11 @@ pub const Queue = struct {
         try self.cmd_buf.append(loop.gpa, .{ .draw = @intCast(vertices.len) });
     }
 
-    pub fn drawSlice(self: *Queue, src: math.Rect(f32), pos: math.Vec2(f32)) !void {
+    pub fn drawSlice(self: *Queue, src: math.Rect(u8), pos: math.Vec2(f32)) !void {
         try self.drawSliceStretch(src, .{ .x = pos.x, .y = pos.y, .w = src.w, .h = src.h });
     }
 
-    pub fn drawSliceStretch(self: *Queue, src: math.Rect(f32), dst: math.Rect(f32)) !void {
+    pub fn drawSliceStretch(self: *Queue, src: math.Rect(u8), dst: math.Rect(f32)) !void {
         const vertices: [4]Vertex = .{
             .{ .x = dst.x, .y = dst.y, .u = src.x, .v = src.y },
             .{ .x = dst.x + dst.w, .y = dst.y, .u = src.x + src.w, .v = src.y },
@@ -114,14 +114,16 @@ pub const Queue = struct {
         try self.draw(&.{ vertices[0], vertices[1], vertices[3], vertices[0], vertices[3], vertices[2] });
     }
 
-    pub fn drawSliceRepeat(self: *Queue, src: math.Rect(f32), dst: math.Rect(f32)) !void {
+    pub fn drawSliceRepeat(self: *Queue, src: math.Rect(u8), dst: math.Rect(f32)) !void {
         // TODO repeat
         try self.drawSliceStretch(src, dst);
     }
 
-    pub fn drawSlice9Patch(self: *Queue, src: math.Rect(f32), border: math.Sides(f32), dst: math.Rect(f32)) !void {
-        const Slice = struct { off: f32, len: f32 };
-        const SlicePair = struct { src: Slice, dst: Slice };
+    pub fn drawSlice9Patch(self: *Queue, src: math.Rect(u8), border: math.Sides(u8), dst: math.Rect(f32)) !void {
+        const SlicePair = struct {
+            src: struct { off: u8, len: u8 },
+            dst: struct { off: f32, len: f32 },
+        };
 
         const h_slices: [3]SlicePair = .{ .{
             .src = .{ .off = src.x, .len = border.left },
@@ -369,8 +371,8 @@ pub const Sprite = enum {
     const info: std.EnumArray(Sprite, Info) = .init(@import("spr_info"));
 
     const Info = struct {
-        rect: math.Rect(f32),
-        border: math.Sides(f32),
+        rect: math.Rect(u8),
+        border: math.Sides(u8),
     };
 };
 
