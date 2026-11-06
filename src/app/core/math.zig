@@ -121,6 +121,16 @@ pub fn Rect(comptime T: type) type {
                 .h = @min(self.y + self.h, other.y + other.h) - y,
             };
         }
+
+        /// Shrinks the rects' sides by the given offsets.
+        pub fn shrink(self: Rect(T), amount: Sides(T)) Rect(T) {
+            return .{
+                .x = self.x + amount.left,
+                .y = self.y + amount.top,
+                .w = self.w - amount.left - amount.right,
+                .h = self.h - amount.top - amount.bottom,
+            };
+        }
     };
 }
 

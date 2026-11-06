@@ -6,6 +6,7 @@ const Ctx = @import("Ctx.zig");
 const Edit = @import("Edit.zig");
 const input = @import("core/input.zig");
 const loop = @import("core/loop.zig");
+const math = @import("core/math.zig");
 const PianoRoll = @import("ui/PianoRoll.zig");
 const render = @import("core/render.zig");
 const std = @import("std");
@@ -18,11 +19,11 @@ ctx: Ctx,
 render_queue: render.Queue,
 synth_buf: []f32,
 
-timeline: ui.ScrollBox(Timeline) = .{ .inner = .{} },
-piano_roll: ui.ScrollBox(PianoRoll) = .{ .inner = .{} },
+timeline: Timeline = .{},
+piano_roll: PianoRoll = .{},
 
 /// The scale at which the application renders.
-const scale = 4;
+const scale = 3;
 
 pub fn init(gpa: std.mem.Allocator, _: std.Io) !App {
     var render_queue: render.Queue = try .init();
@@ -38,7 +39,7 @@ pub fn init(gpa: std.mem.Allocator, _: std.Io) !App {
         .ctx = ctx,
         .render_queue = render_queue,
         .synth_buf = synth_buf,
-        .piano_roll = .{ .inner = .{ .pat_i = 0 } },
+        .piano_roll = .{ .pat_i = 0 },
     };
 }
 
@@ -52,14 +53,17 @@ pub fn deinit(self: *App) void {
 pub fn iter(self: *App) !void {
     // Renders
 
-    try ui.v_split.draw(
-        self.piano_roll,
-        self.timeline,
-        self.ctx,
-        .{ .w = render.widthf() / scale, .h = render.heightf() / scale },
-        0.67,
-        &self.render_queue,
-    );
+    const rect: math.Rect(f32) = .{ .w = render.widthf() / scale, .h = render.heightf() / scale };
+
+    const rects = ui.v_split.rects(rect, 0.67);
+
+    try ui.frame.draw(rects[0], &self.render_queue);
+    try self.piano_roll.draw(self.ctx, rects[0].shrink(ui.frame.inner_padding), &self.render_queue);
+    _ = try self.render_queue.drawText("roll", rects[0].pos().add(.{ .x = ui.frame.ribbon_padding_h, .y = ui.frame.ribbon_offset_y + 1 }));
+
+    try ui.frame.draw(rects[1], &self.render_queue);
+    try self.timeline.draw(self.ctx, rects[1].shrink(ui.frame.inner_padding), &self.render_queue);
+    _ = try self.render_queue.drawText("timeline", rects[1].pos().add(.{ .x = ui.frame.ribbon_padding_h, .y = ui.frame.ribbon_offset_y + 1 }));
 
     self.render_queue.flush(scale);
 
@@ -90,15 +94,11 @@ pub fn respond(self: *App, comptime event_type: input.event.Type, event: input.e
             loop.quit();
     }
 
-    if (self.ctx.is_playing) return;
+    const rect: math.Rect(f32) = .{ .w = render.widthf() / scale, .h = render.heightf() / scale };
 
-    try ui.v_split.respond(
-        &self.piano_roll,
-        &self.timeline,
-        &self.ctx,
-        .{ .w = render.widthf() / scale, .h = render.heightf() / scale },
-        0.67,
-        event_type,
-        event,
-    );
+    const rects = ui.v_split.rects(rect, 0.67);
+    if (self.ctx.input.cursor_pos.y < rects[1].y)
+        try self.piano_roll.respond(&self.ctx, rects[0].shrink(ui.frame.inner_padding), event_type, event)
+    else
+        try self.timeline.respond(&self.ctx, rects[1].shrink(ui.frame.inner_padding), event_type, event);
 }

@@ -294,6 +294,21 @@ pub const Queue = struct {
 };
 
 pub const Sprite = enum {
+    frame,
+    tab_active,
+    tab_inactive,
+    button,
+    button_focused,
+    button_active,
+    button_icon_play,
+    button_icon_pause,
+    field,
+    field_focused,
+    field_cursor,
+    dropdown,
+    dropdown_focused,
+    dropdown_active,
+
     note_red,
     note_yellow,
     note_green,
@@ -310,11 +325,6 @@ pub const Sprite = enum {
     sect_note_blue,
     sect_note_purple,
     playhead,
-    frame,
-    scroll_thumb,
-    scroll_track,
-    scroll_ticks_h,
-    scroll_ticks_v,
     outline,
 
     font_a,
