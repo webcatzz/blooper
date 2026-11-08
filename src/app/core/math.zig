@@ -47,6 +47,11 @@ pub fn Vec2(comptime T: type) type {
             return .{ .x = self.x / other.x, .y = self.y / other.y };
         }
 
+        /// Divides `self` by `other`, component-wise. Rounds toward zero.
+        pub fn divTrunc(self: Vec2(T), other: Vec2(T)) Vec2(T) {
+            return .{ .x = @divTrunc(self.x, other.x), .y = @divTrunc(self.y, other.y) };
+        }
+
         /// Adds the given vectors in place, component-wise.
         pub fn addAssign(self: *Vec2(T), other: Vec2(T)) void {
             self.x += other.x;
@@ -93,6 +98,9 @@ pub fn Rect(comptime T: type) type {
         w: T,
         h: T,
 
+        /// A rectangle with zero size at the origin.
+        pub const zero: Rect(T) = .{ .w = 0, .h = 0 };
+
         /// Returns the position of the rectangle.
         pub fn pos(self: Rect(T)) Vec2(T) {
             return .{ .x = self.x, .y = self.y };
@@ -122,6 +130,16 @@ pub fn Rect(comptime T: type) type {
             };
         }
 
+        /// Expands the rects' sides by the given offsets.
+        pub fn grow(self: Rect(T), amount: Sides(T)) Rect(T) {
+            return .{
+                .x = self.x - amount.left,
+                .y = self.y - amount.top,
+                .w = self.w + amount.left + amount.right,
+                .h = self.h + amount.top + amount.bottom,
+            };
+        }
+
         /// Shrinks the rects' sides by the given offsets.
         pub fn shrink(self: Rect(T), amount: Sides(T)) Rect(T) {
             return .{
@@ -141,6 +159,11 @@ pub fn Sides(comptime T: type) type {
         right: T,
         top: T,
         bottom: T,
+
+        /// Returns a value with all offsets set to `v`.
+        pub fn all(v: T) Sides(T) {
+            return .{ .left = v, .right = v, .top = v, .bottom = v };
+        }
     };
 }
 

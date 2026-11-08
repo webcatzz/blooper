@@ -85,11 +85,17 @@ pub fn run(comptime T: type, init: std.process.Init) void {
                 }),
 
                 .MOUSE_MOVE => state.respond(.cursor, .{
-                    .pos = .{ .x = event.*.mouse_x, .y = event.*.mouse_y },
+                    .pos = .{
+                        .x = @divTrunc(@as(i32, @trunc(event.*.mouse_x)), render.scale),
+                        .y = @divTrunc(@as(i32, @trunc(event.*.mouse_y)), render.scale),
+                    },
                 }),
 
                 .MOUSE_SCROLL => state.respond(.scroll, .{
-                    .amount = .{ .x = event.*.scroll_x, .y = event.*.scroll_y },
+                    .amount = .{
+                        .x = event.*.scroll_x,
+                        .y = event.*.scroll_y,
+                    },
                 }),
 
                 .CHAR => state.respond(.char, .{

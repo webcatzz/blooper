@@ -35,15 +35,16 @@ const Modifiers = packed struct {
     super: bool = false,
 };
 
-/// Records input events and keeps track of input state.
+/// Records input events, keeps track of input state, and allows querying
+/// actions' state.
 pub const Map = struct {
     /// A set of all buttons currently recorded as pressed.
     pressed_buttons: std.EnumSet(input.Button) = .empty,
     /// The most recently recorded cursor position.
-    cursor_pos: math.Vec2(f32) = .zero,
+    cur_pos: math.Vec2(i32) = .zero,
     /// The motion of the cursor, relative to the second-most recently recorded
     /// cursor position.
-    cursor_motion: math.Vec2(f32) = .zero,
+    cur_motion: math.Vec2(i32) = .zero,
     /// Button bindings for each action.
     bindings: std.EnumArray(Action, [2]?Binding) = default_bindings,
     /// The most recently recorded input event.
@@ -74,8 +75,8 @@ pub const Map = struct {
                 self.last_event = .{ .button = event };
             },
             .cursor => {
-                self.cursor_motion = event.pos.sub(self.cursor_pos);
-                self.cursor_pos = event.pos;
+                self.cur_motion = event.pos.sub(self.cur_pos);
+                self.cur_pos = event.pos;
                 self.last_event = .{ .cursor = event };
             },
             .scroll => self.last_event = .{ .scroll = event },

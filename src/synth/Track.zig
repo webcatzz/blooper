@@ -40,7 +40,7 @@ pub const Pattern = struct {
 pub const Note = struct {
     first_tick: u16,
     last_tick: u16,
-    pitch: u8,
+    pitch: u7,
     volume: u8 = 0xff,
 };
 

@@ -1,4 +1,6 @@
-//! Application state.
+//! Application harness.
+//!
+//! Defines the callbacks called by `loop.run`.
 
 const action = @import("action.zig");
 const audio = @import("core/audio.zig");
@@ -11,20 +13,26 @@ const PianoRoll = @import("ui/PianoRoll.zig");
 const render = @import("core/render.zig");
 const std = @import("std");
 const Timeline = @import("ui/Timeline.zig");
-const ui = @import("ui/common.zig");
+const Ui = @import("Ui.zig");
 
 const App = @This();
 
+/// Application state.
 ctx: Ctx,
+
+/// The UI system.
+ui: Ui = .{},
+/// A queue of rendering operations for the next frame.
 render_queue: render.Queue,
+/// An intermediary buffer used to synthesize audio.
 synth_buf: []f32,
 
-timeline: Timeline = .{},
+/// Piano roll state.
 piano_roll: PianoRoll = .{},
+/// Timeline state.
+timeline: Timeline = .{},
 
-/// The scale at which the application renders.
-const scale = 3;
-
+/// Initializes the app.
 pub fn init(gpa: std.mem.Allocator, _: std.Io) !App {
     var render_queue: render.Queue = try .init();
     errdefer render_queue.deinit();
@@ -43,6 +51,7 @@ pub fn init(gpa: std.mem.Allocator, _: std.Io) !App {
     };
 }
 
+/// Frees the app.
 pub fn deinit(self: *App) void {
     self.ctx.gpa.free(self.synth_buf);
     self.ctx.deinit();
@@ -50,22 +59,24 @@ pub fn deinit(self: *App) void {
     self.* = undefined;
 }
 
+/// Updates the app's state over time.
 pub fn iter(self: *App) !void {
-    // Renders
+    // Draws UI
 
-    const rect: math.Rect(f32) = .{ .w = render.widthf() / scale, .h = render.heightf() / scale };
+    self.ui.clear(
+        .{ .w = render.width(), .h = render.height() },
+        &self.ctx.input,
+        &self.render_queue,
+    );
 
-    const rects = ui.v_split.rects(rect, 0.67);
+    self.ui.split(.y, @divTrunc(self.ui.rect.h, 3) * 2);
+    try self.ui.panel();
+    try self.piano_roll.draw(self.ctx, &self.ui);
+    self.ui.next();
+    try self.ui.panel();
+    try self.timeline.draw(self.ctx, &self.ui);
 
-    try ui.frame.draw(rects[0], &self.render_queue);
-    try self.piano_roll.draw(self.ctx, rects[0].shrink(ui.frame.inner_padding), &self.render_queue);
-    _ = try self.render_queue.drawText("roll", rects[0].pos().add(.{ .x = ui.frame.ribbon_padding_h, .y = ui.frame.ribbon_offset_y + 1 }));
-
-    try ui.frame.draw(rects[1], &self.render_queue);
-    try self.timeline.draw(self.ctx, rects[1].shrink(ui.frame.inner_padding), &self.render_queue);
-    _ = try self.render_queue.drawText("timeline", rects[1].pos().add(.{ .x = ui.frame.ribbon_padding_h, .y = ui.frame.ribbon_offset_y + 1 }));
-
-    self.render_queue.flush(scale);
+    self.ui.queue.flush();
 
     // Streams audio
 
@@ -80,11 +91,9 @@ pub fn iter(self: *App) !void {
     }
 }
 
+/// Updates the app's state in response to input.
 pub fn respond(self: *App, comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
-    if (event_type == .cursor)
-        self.ctx.input.record(event_type, .{ .pos = event.pos.div(.all(scale)) })
-    else
-        self.ctx.input.record(event_type, event);
+    self.ctx.input.record(event_type, event);
 
     if (event_type == .button) {
         if (self.ctx.input.wasJustActivated(.toggle_synth)) {
@@ -94,11 +103,5 @@ pub fn respond(self: *App, comptime event_type: input.event.Type, event: input.e
             loop.quit();
     }
 
-    const rect: math.Rect(f32) = .{ .w = render.widthf() / scale, .h = render.heightf() / scale };
-
-    const rects = ui.v_split.rects(rect, 0.67);
-    if (self.ctx.input.cursor_pos.y < rects[1].y)
-        try self.piano_roll.respond(&self.ctx, rects[0].pos().add(.{ .x = ui.frame.inner_padding.left, .y = ui.frame.inner_padding.top }), event_type, event)
-    else
-        try self.timeline.respond(&self.ctx, rects[1].pos().add(.{ .x = ui.frame.inner_padding.left, .y = ui.frame.inner_padding.top }), event_type, event);
+    try self.ui.respond(&self.ctx);
 }

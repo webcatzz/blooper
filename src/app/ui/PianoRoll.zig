@@ -1,25 +1,37 @@
+//! Allows editing a pattern in a track.
+
 const Ctx = @import("../Ctx.zig");
-const input = @import("../core/input.zig");
 const math = @import("../core/math.zig");
 const pitch_util = @import("../../synth/pitch.zig");
-const render = @import("../core/render.zig");
 const std = @import("std");
 const Track = @import("../../synth/Track.zig");
+const Ui = @import("../Ui.zig");
 
 const PianoRoll = @This();
 
-scroll: math.Vec2(f32) = .{ .x = 0, .y = -pitch_util.c4 * pitch_height },
+/// The current scroll amount.
+scroll: math.Vec2(f32) = .{ .x = 0, .y = pitch_util.c4 * pitch_height },
 /// The current user selection.
 sel: Selection = .none,
 /// The index of the current pattern.
 pat_i: ?u16 = null,
 
-const tick_width = 0.25;
+/// The width used to represent a tick, in pixels.
+const tick_width = 1;
+/// The height used to represent a pitch, in pixels.
 const pitch_height = 6;
+/// The minimum pitch permitted by the piano roll.
+const min_pitch = 0;
+/// The maximum pitch permitted by the piano roll.
+const max_pitch = std.math.maxInt(u7);
+/// The maximum distance from the horizontal edges of a note that, when
+/// receiving input, will begin resizing the note rather than moving it.
 const note_edge_width = 2;
+/// The full height of the piano roll.
+const full_h = max_pitch * pitch_height;
 
 /// "Floating" coordinates in the pattern.
-const Coords = struct { tick: u16, pitch: u8 };
+const Coords = struct { tick: u16, pitch: u7 };
 
 /// A target of a cursor.
 const Target = union(enum) {
@@ -37,13 +49,70 @@ const Selection = union(enum) {
     note_end: u16,
 };
 
-pub fn respond(self: *PianoRoll, ctx: *Ctx, pos: math.Vec2(f32), comptime event_type: input.event.Type, event: input.event.of(event_type)) !void {
-    switch (event_type) {
-        .button => {
-            const pat_i = self.pat_i orelse return;
+/// Draws the piano roll.
+pub fn draw(self: *const PianoRoll, ctx: Ctx, ui: *Ui) !void {
+    const pat_i = self.pat_i orelse {
+        try ui.inset();
+        return;
+    };
 
+    try ui.addScrollbar(.y, @trunc(self.scroll.y), @max(ui.rect.y, full_h), .wrapCtx(@constCast(self), respondVScrollbar));
+    try ui.addScrollbar(.x, @trunc(self.scroll.x), @max(ui.rect.x, fullW(ctx.edit.track.patterns[pat_i]), @as(i32, @trunc(self.scroll.x))), .wrapCtx(@constCast(self), respondHScrollbar));
+
+    try ui.inset();
+    try ui.clip(ui.rect);
+    try ui.flag(ui.rect, .wrapCtx(@constCast(self), respond));
+
+    if (ui.rect.contains(ctx.input.cur_pos)) {
+        const pitch = self.pitchFromY(ctx.input.cur_pos.y, ui.rect.y);
+        const pitch_y = self.yFromPitch(pitch, ui.rect.y);
+
+        try ui.queue.drawSpriteStretch(.pitch_highlight, .{
+            .x = ui.rect.x,
+            .y = pitch_y,
+            .w = ui.rect.w,
+            .h = pitch_height,
+        });
+
+        var name_buf: [4]u8 = undefined;
+        try ui.queue.drawText(
+            pitch_util.name(pitch, &name_buf),
+            .{ .x = ui.rect.x, .y = pitch_y },
+        );
+    }
+
+    for (ctx.edit.track.patterns[pat_i].notes) |note|
+        try ui.queue.drawSprite9Patch(.note_red, .{
+            .x = self.xFromTick(note.first_tick, ui.rect.x),
+            .y = self.yFromPitch(note.pitch, ui.rect.y),
+            .w = widthFromTicks(note.last_tick - note.first_tick),
+            .h = pitch_height,
+        });
+
+    switch (self.sel) {
+        .none => {},
+
+        .note, .note_start, .note_end => |note_i| {
+            const note = ctx.edit.track.patterns[pat_i].notes[note_i];
+            try ui.queue.drawSprite9Patch(.outline, .{
+                .x = self.xFromTick(note.first_tick, ui.rect.x) - 2,
+                .y = self.yFromPitch(note.pitch, ui.rect.y) - 2,
+                .w = widthFromTicks(note.last_tick - note.first_tick) + 4,
+                .h = pitch_height + 4,
+            });
+        },
+    }
+
+    try ui.unclip();
+}
+
+fn respond(self: *PianoRoll, ctx: *Ctx, rect: math.Rect(i32)) !void {
+    const pat_i = self.pat_i orelse return;
+
+    switch (ctx.input.last_event) {
+        .button => {
             if (ctx.input.wasJustActivated(.accept))
-                switch (self.pick(ctx.edit.track.patterns[pat_i], ctx.input.cursor_pos, pos)) {
+                switch (self.pick(ctx.edit.track.patterns[pat_i], ctx.input.cur_pos, rect.pos())) {
                     .none => |target| {
                         const note_i = try ctx.edit.insertNote(pat_i, .{
                             .first_tick = target.tick,
@@ -69,18 +138,16 @@ pub fn respond(self: *PianoRoll, ctx: *Ctx, pos: math.Vec2(f32), comptime event_
         },
 
         .cursor => {
-            const pat_i = self.pat_i orelse return;
-
             if (ctx.input.isActive(.accept))
                 switch (self.sel) {
                     .note => |note_i| {
                         const note = &ctx.edit.track.patterns[pat_i].notes[note_i];
-                        if (ctx.input.cursor_motion.x < 0) {
-                            const tick_offset = @min(note.first_tick, @as(u16, @intFromFloat(-ctx.input.cursor_motion.x / tick_width)));
+                        if (ctx.input.cur_motion.x < 0) {
+                            const tick_offset = @min(note.first_tick, ticksFromWidth(ctx.input.cur_motion.x));
                             note.first_tick -= tick_offset;
                             note.last_tick -= tick_offset;
                         } else {
-                            const tick_offset: u16 = @intFromFloat(ctx.input.cursor_motion.x / tick_width);
+                            const tick_offset = ticksFromWidth(ctx.input.cur_motion.x);
                             note.first_tick += tick_offset;
                             note.last_tick += tick_offset;
                         }
@@ -88,87 +155,50 @@ pub fn respond(self: *PianoRoll, ctx: *Ctx, pos: math.Vec2(f32), comptime event_
 
                     .note_start => |note_i| {
                         const note = &ctx.edit.track.patterns[pat_i].notes[note_i];
-                        note.first_tick = @min(note.last_tick, self.tickFromX(ctx.input.cursor_pos.x, pos.x));
+                        note.first_tick = @min(note.last_tick, self.tickFromX(ctx.input.cur_pos.x, rect.x));
                     },
 
                     .note_end => |note_i| {
                         const note = &ctx.edit.track.patterns[pat_i].notes[note_i];
-                        note.last_tick = @max(note.first_tick, self.tickFromX(ctx.input.cursor_pos.x, pos.x));
+                        note.last_tick = @max(note.first_tick, self.tickFromX(ctx.input.cur_pos.x, rect.x));
                     },
 
                     else => {},
                 };
         },
 
-        .scroll => {
-            self.scroll.x = @max(self.scroll.x - event.amount.x, 0);
-            self.scroll.y = @min(self.scroll.y - event.amount.y, 0);
+        .scroll => |event| {
+            self.scroll.x = @max(0, self.scroll.x - event.amount.x);
+            self.scroll.y = @max(0, @min(full_h, self.scroll.y - event.amount.y));
         },
 
         else => {},
     }
 }
 
-pub fn draw(self: PianoRoll, ctx: Ctx, rect: math.Rect(f32), queue: *render.Queue) !void {
-    const pat_i = self.pat_i orelse return;
-
-    try queue.clip(rect);
-
-    if (rect.contains(ctx.input.cursor_pos)) {
-        const pitch = self.pitchFromY(ctx.input.cursor_pos.y, rect.y);
-        const pitch_y = self.yFromPitch(pitch, rect.y);
-
-        try queue.drawSpriteStretch(.pitch_highlight, .{
-            .x = rect.x,
-            .y = pitch_y,
-            .w = rect.w,
-            .h = pitch_height,
-        });
-
-        var name_buf: [4]u8 = undefined;
-        try queue.drawText(
-            pitch_util.name(pitch, &name_buf),
-            .{ .x = rect.x, .y = pitch_y },
-        );
-    }
-
-    for (ctx.edit.track.patterns[pat_i].notes) |note| {
-        const pos = self.project(note.first_tick, note.pitch, rect.pos());
-        try queue.drawSprite9Patch(.note_red, .{
-            .x = pos.x,
-            .y = pos.y,
-            .w = @as(f32, note.last_tick - note.first_tick) * tick_width,
-            .h = pitch_height,
-        });
-    }
-
-    switch (self.sel) {
-        .none => {},
-
-        .note, .note_start, .note_end => |note_i| {
-            const note = ctx.edit.track.patterns[pat_i].notes[note_i];
-            const pos = self.project(note.first_tick, note.pitch, rect.pos());
-            try queue.drawSprite9Patch(.outline, .{
-                .x = pos.x - 2,
-                .y = pos.y - 2,
-                .w = @as(f32, note.last_tick - note.first_tick) * tick_width + 4,
-                .h = pitch_height + 4,
-            });
-        },
-    }
-
-    try queue.unclip();
+fn respondVScrollbar(self: *PianoRoll, ctx: *Ctx, rect: math.Rect(i32)) !void {
+    if (ctx.input.isActive(.accept))
+        self.scroll.y = @floatFromInt(@divTrunc((ctx.input.cur_pos.y - rect.y) * full_h, rect.h));
 }
 
-pub fn totalSize(_: Ctx) math.Vec2(f32) {
-    return .{
-        .x = @as(f32, std.math.maxInt(u16)) * tick_width,
-        .y = @as(f32, std.math.maxInt(u8)) * pitch_height,
-    };
+fn respondHScrollbar(self: *PianoRoll, ctx: *Ctx, rect: math.Rect(i32)) !void {
+    if (ctx.input.isActive(.accept)) {
+        if (self.pat_i) |pat_i|
+            self.scroll.x = @floatFromInt(@divTrunc((ctx.input.cur_pos.x - rect.x) * fullW(ctx.edit.track.patterns[pat_i]), rect.w));
+    }
+}
+
+/// Returns the full width of a piano roll displaying the given pattern.
+fn fullW(pattern: Track.Pattern) i32 {
+    var last_tick: u64 = 0;
+    for (pattern.notes) |note|
+        last_tick = @max(last_tick, note.last_tick);
+
+    return @trunc(@as(f32, @floatFromInt(last_tick)) * tick_width);
 }
 
 /// Returns the cursor target at the given position.
-fn pick(self: PianoRoll, pat: Track.Pattern, pos: math.Vec2(f32), off: math.Vec2(f32)) Target {
+fn pick(self: PianoRoll, pat: Track.Pattern, pos: math.Vec2(i32), off: math.Vec2(i32)) Target {
     const tick = self.tickFromX(pos.x, off.x);
     const pitch = self.pitchFromY(pos.y, off.y);
 
@@ -184,26 +214,34 @@ fn pick(self: PianoRoll, pat: Track.Pattern, pos: math.Vec2(f32), off: math.Vec2
     return .{ .none = .{ .tick = tick, .pitch = pitch } };
 }
 
-/// Returns the position corresponding to the given tick and pitch.
-fn project(self: PianoRoll, tick: u16, pitch: u8, off: math.Vec2(f32)) math.Vec2(f32) {
-    return .{
-        .x = self.xFromTick(tick, off.x),
-        .y = self.yFromPitch(pitch, off.y),
-    };
+/// Converts the given width to a duration in ticks.
+///
+/// Widths are converted to their absolute value.
+fn ticksFromWidth(w: i32) u16 {
+    return @trunc(@as(f32, @floatFromInt(@abs(w))) / tick_width);
 }
 
-fn tickFromX(self: PianoRoll, x: f32, rect_x: f32) u16 {
-    return @trunc(@max(x - rect_x + self.scroll.x, 0) / tick_width);
+/// Converts the given duration to a width.
+fn widthFromTicks(ticks: u16) i32 {
+    return @trunc(@as(f32, ticks) * tick_width);
 }
 
-fn xFromTick(self: PianoRoll, tick: u16, rect_x: f32) f32 {
-    return rect_x - self.scroll.x + @as(f32, tick) * tick_width;
+/// Returns the tick at the given x-coordinate.
+fn tickFromX(self: PianoRoll, x: i32, rect_x: i32) u16 {
+    return ticksFromWidth(x - rect_x + @as(i32, @trunc(self.scroll.x)));
 }
 
-fn pitchFromY(self: PianoRoll, y: f32, rect_y: f32) u8 {
-    return @as(u8, @trunc(@max(-y + rect_y - self.scroll.y, 0) / pitch_height)) + 1;
+/// Returns the x-coordinate of the given tick.
+fn xFromTick(self: PianoRoll, tick: u16, rect_x: i32) i32 {
+    return rect_x - @as(i32, @trunc(self.scroll.x)) + @as(i32, @trunc(@as(f32, tick) * tick_width));
 }
 
-fn yFromPitch(self: PianoRoll, pitch: u8, rect_y: f32) f32 {
-    return rect_y - self.scroll.y - @as(f32, pitch) * pitch_height;
+/// Returns the pitch at the given y-coordinate.
+fn pitchFromY(self: PianoRoll, y: i32, rect_y: i32) u7 {
+    return @intCast(max_pitch -| @max(min_pitch, (y - rect_y + @as(i32, @trunc(self.scroll.y)))) / pitch_height);
+}
+
+/// Returns the y-coordinate of the given pitch.
+fn yFromPitch(self: PianoRoll, pitch: u7, rect_y: i32) i32 {
+    return rect_y - @as(i32, @trunc(self.scroll.y)) + @as(i32, max_pitch - pitch) * pitch_height;
 }

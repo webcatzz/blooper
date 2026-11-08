@@ -52,7 +52,7 @@ const Channel = struct {
 };
 
 const Note = struct {
-    pitch: u8,
+    pitch: u7,
     volume: u8,
 };
 
@@ -124,7 +124,7 @@ pub fn chipPulse(phase: f32, duty: f32) f32 {
 ///
 /// - `phase` should be a value in \[0.0, 1.0).
 pub fn chipTriangle(phase: f32) f32 {
-    return @abs(phase - @floor(phase + 0.5)) * 2.0;
+    return @abs(phase - @round(phase)) * 2;
 }
 
 /// Samples a sine wave at the given phase.

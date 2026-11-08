@@ -8,7 +8,7 @@ pub const event = struct {
     /// A button is pressed or released.
     pub const Button = struct { button: input.Button, is_pressed: bool };
     /// A cursor is moved to a new position.
-    pub const Cursor = struct { pos: math.Vec2(f32) };
+    pub const Cursor = struct { pos: math.Vec2(i32) };
     /// A wheel or trackpad is scrolled by some amount.
     pub const Scroll = struct { amount: math.Vec2(f32) };
     /// A UTF-32 character is input.

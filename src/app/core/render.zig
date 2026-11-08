@@ -8,13 +8,13 @@ const shd_basic = @import("shd_basic");
 const sokol = @import("sokol");
 const std = @import("std");
 
+/// A multiplier applied to all vertex positions.
+pub const scale = 3;
+
 /// A queue of rendering operations.
 pub const Queue = struct {
     cmd_buf: std.ArrayList(Command) = .empty,
     vtx_buf: std.ArrayList(Vertex) = .empty,
-
-    clip_stack: std.ArrayList(math.Rect(f32)) = .empty,
-
     _gpu_vtx_buf: sokol.gfx.Buffer,
     _gpu_img: sokol.gfx.Image,
     _gpu_view: sokol.gfx.View,
@@ -50,11 +50,7 @@ pub const Queue = struct {
             break :init desc;
         });
 
-        const clip_stack: std.ArrayList(math.Rect(f32)) = try .initCapacity(loop.gpa, 64);
-        errdefer clip_stack.deinit(loop.gpa);
-
         return .{
-            .clip_stack = clip_stack,
             ._gpu_vtx_buf = vtx_buf,
             ._gpu_img = img,
             ._gpu_view = view,
@@ -69,7 +65,6 @@ pub const Queue = struct {
     pub fn deinit(self: *Queue) void {
         self.cmd_buf.deinit(loop.gpa);
         self.vtx_buf.deinit(loop.gpa);
-        self.clip_stack.deinit(loop.gpa);
         sokol.gfx.destroyBuffer(self._gpu_vtx_buf);
         sokol.gfx.destroyImage(self._gpu_img);
         sokol.gfx.destroyView(self._gpu_view);
@@ -100,29 +95,44 @@ pub const Queue = struct {
         try self.cmd_buf.append(loop.gpa, .{ .draw = @intCast(vertices.len) });
     }
 
-    pub fn drawSlice(self: *Queue, src: math.Rect(u8), pos: math.Vec2(f32)) !void {
+    pub fn drawSlice(self: *Queue, src: math.Rect(u8), pos: math.Vec2(i32)) !void {
         try self.drawSliceStretch(src, .{ .x = pos.x, .y = pos.y, .w = src.w, .h = src.h });
     }
 
-    pub fn drawSliceStretch(self: *Queue, src: math.Rect(u8), dst: math.Rect(f32)) !void {
-        const vertices: [4]Vertex = .{
-            .{ .x = dst.x, .y = dst.y, .u = src.x, .v = src.y },
-            .{ .x = dst.x + dst.w, .y = dst.y, .u = src.x + src.w, .v = src.y },
-            .{ .x = dst.x, .y = dst.y + dst.h, .u = src.x, .v = src.y + src.h },
-            .{ .x = dst.x + dst.w, .y = dst.y + dst.h, .u = src.x + src.w, .v = src.y + src.h },
-        };
+    pub fn drawSliceStretch(self: *Queue, src: math.Rect(u8), dst: math.Rect(i32)) !void {
+        const vertices: [4]Vertex = .{ .{
+            .x = @floatFromInt(dst.x),
+            .y = @floatFromInt(dst.y),
+            .u = src.x,
+            .v = src.y,
+        }, .{
+            .x = @floatFromInt(dst.x + dst.w),
+            .y = @floatFromInt(dst.y),
+            .u = src.x + src.w,
+            .v = src.y,
+        }, .{
+            .x = @floatFromInt(dst.x),
+            .y = @floatFromInt(dst.y + dst.h),
+            .u = src.x,
+            .v = src.y + src.h,
+        }, .{
+            .x = @floatFromInt(dst.x + dst.w),
+            .y = @floatFromInt(dst.y + dst.h),
+            .u = src.x + src.w,
+            .v = src.y + src.h,
+        } };
         try self.draw(&.{ vertices[0], vertices[1], vertices[3], vertices[0], vertices[3], vertices[2] });
     }
 
-    pub fn drawSliceRepeat(self: *Queue, src: math.Rect(u8), dst: math.Rect(f32)) !void {
+    pub fn drawSliceRepeat(self: *Queue, src: math.Rect(u8), dst: math.Rect(i32)) !void {
         // TODO repeat
         try self.drawSliceStretch(src, dst);
     }
 
-    pub fn drawSlice9Patch(self: *Queue, src: math.Rect(u8), border: math.Sides(u8), dst: math.Rect(f32)) !void {
+    pub fn drawSlice9Patch(self: *Queue, src: math.Rect(u8), border: math.Sides(u8), dst: math.Rect(i32)) !void {
         const SlicePair = struct {
             src: struct { off: u8, len: u8 },
-            dst: struct { off: f32, len: f32 },
+            dst: struct { off: i32, len: i32 },
         };
 
         const h_slices: [3]SlicePair = .{ .{
@@ -161,30 +171,31 @@ pub const Queue = struct {
                 });
     }
 
-    pub fn drawSprite(self: *Queue, spr: Sprite, pos: math.Vec2(f32)) !void {
+    pub fn drawSprite(self: *Queue, spr: Sprite, pos: math.Vec2(i32)) !void {
         try self.drawSlice(Sprite.info.get(spr).rect, pos);
     }
 
-    pub fn drawSpriteStretch(self: *Queue, spr: Sprite, dst: math.Rect(f32)) !void {
+    pub fn drawSpriteStretch(self: *Queue, spr: Sprite, dst: math.Rect(i32)) !void {
         try self.drawSliceStretch(Sprite.info.get(spr).rect, dst);
     }
 
-    pub fn drawSpriteRepeat(self: *Queue, spr: Sprite, dst: math.Rect(f32)) !void {
+    pub fn drawSpriteRepeat(self: *Queue, spr: Sprite, dst: math.Rect(i32)) !void {
         try self.drawSliceRepeat(Sprite.info.get(spr).rect, dst);
     }
 
-    pub fn drawSprite9Patch(self: *Queue, spr: Sprite, dst: math.Rect(f32)) !void {
+    pub fn drawSprite9Patch(self: *Queue, spr: Sprite, dst: math.Rect(i32)) !void {
         const info = Sprite.info.get(spr);
         try self.drawSlice9Patch(info.rect, info.border, dst);
     }
 
-    pub fn drawText(self: *Queue, text: []const u8, pos: math.Vec2(f32)) !void {
+    pub fn drawText(self: *Queue, text: []const u8, pos: math.Vec2(i32)) !void {
         var x = pos.x;
 
         for (text) |char| {
             const spr: Sprite = switch (char) {
                 'a'...'z' => @fromBackingInt(@intCast(char - 'a' + @backingInt(Sprite.font_a))),
                 'A'...'Z' => @fromBackingInt(@intCast(char - 'A' + @backingInt(Sprite.font_a))),
+                '-' => .font_minus,
                 '0'...'9' => @fromBackingInt(@intCast(char - '0' + @backingInt(Sprite.font_0))),
                 '#' => .font_hash,
                 ' ' => {
@@ -201,27 +212,16 @@ pub const Queue = struct {
         }
     }
 
-    pub fn clip(self: *Queue, rect: math.Rect(f32)) !void {
-        var intersection = rect;
-        if (self.clip_stack.last()) |last_rect|
-            intersection = intersection.intersect(last_rect);
-
-        try self.clip_stack.append(loop.gpa, intersection);
-        try self.cmd_buf.append(loop.gpa, .{ .clip = intersection });
+    pub fn clip(self: *Queue, rect: math.Rect(i32)) !void {
+        try self.cmd_buf.append(loop.gpa, .{ .clip = rect });
     }
 
     pub fn unclip(self: *Queue) !void {
-        _ = self.clip_stack.pop();
-        if (self.clip_stack.last()) |rect|
-            try self.cmd_buf.append(loop.gpa, .{ .clip = rect })
-        else
-            try self.cmd_buf.append(loop.gpa, .unclip);
+        try self.cmd_buf.append(loop.gpa, .unclip);
     }
 
     /// Submits all queued operations to be rendered and clears the queue.
-    ///
-    /// `scale` is a multiplier applied to all vertex positions.
-    pub fn flush(self: *Queue, scale: f32) void {
+    pub fn flush(self: *Queue) void {
         if (self.vtx_buf.items.len > 0)
             sokol.gfx.writeBufferTransient(.{
                 .src = .{ .data = .{
@@ -253,7 +253,7 @@ pub const Queue = struct {
         sokol.gfx.applyBindings(bindings);
 
         sokol.gfx.applyUniforms(shd_basic.UB_vert_uniform, .{
-            .ptr = &shd_basic.VertUniform{ .scale_mult = .{ scale / widthf(), scale / heightf() } },
+            .ptr = &shd_basic.VertUniform{ .scale_mult = .{ scale / sokol.app.widthf(), scale / sokol.app.heightf() } },
             .size = @sizeOf(shd_basic.VertUniform),
         });
 
@@ -266,7 +266,7 @@ pub const Queue = struct {
                 },
 
                 .clip => |rect| {
-                    sokol.gfx.applyScissorRectf(
+                    sokol.gfx.applyScissorRect(
                         rect.x * scale,
                         rect.y * scale,
                         rect.w * scale,
@@ -279,8 +279,8 @@ pub const Queue = struct {
                     sokol.gfx.applyScissorRect(
                         0,
                         0,
-                        width(),
-                        height(),
+                        sokol.app.width(),
+                        sokol.app.height(),
                         true,
                     );
                 },
@@ -291,25 +291,29 @@ pub const Queue = struct {
 
         self.cmd_buf.clearRetainingCapacity();
         self.vtx_buf.clearRetainingCapacity();
-        self.clip_stack.clearRetainingCapacity();
     }
 };
 
 pub const Sprite = enum {
-    frame,
+    panel,
+    panel_inset,
     tab_active,
     tab_inactive,
     button,
-    button_focused,
+    button_hovered,
     button_active,
     button_icon_play,
-    button_icon_pause,
+    button_icon_stop,
     field,
     field_focused,
     field_cursor,
     dropdown,
     dropdown_focused,
     dropdown_active,
+    scroll_track,
+    scroll_thumb,
+    scroll_ticks_v,
+    scroll_ticks_h,
 
     note_red,
     note_yellow,
@@ -356,6 +360,7 @@ pub const Sprite = enum {
     font_x,
     font_y,
     font_z,
+    font_minus,
     font_0,
     font_1,
     font_2,
@@ -368,7 +373,7 @@ pub const Sprite = enum {
     font_9,
     font_hash,
 
-    const info: std.EnumArray(Sprite, Info) = .init(@import("spr_info"));
+    pub const info: std.EnumArray(Sprite, Info) = .init(@import("spr_info"));
 
     const Info = struct {
         rect: math.Rect(u8),
@@ -379,7 +384,7 @@ pub const Sprite = enum {
 /// A rendering operation.
 const Command = union(enum) {
     draw: u32,
-    clip: math.Rect(f32),
+    clip: math.Rect(i32),
     unclip,
 };
 
@@ -395,22 +400,12 @@ const Vertex = extern struct {
 
 /// Returns the width of the rendering viewport, in pixels.
 pub fn width() i32 {
-    return sokol.app.width();
+    return @divTrunc(sokol.app.width(), scale);
 }
 
 /// Returns the height of the rendering viewport, in pixels.
 pub fn height() i32 {
-    return sokol.app.height();
-}
-
-/// Returns the width of the rendering viewport, in pixels.
-pub fn widthf() f32 {
-    return sokol.app.widthf();
-}
-
-/// Returns the height of the rendering viewport, in pixels.
-pub fn heightf() f32 {
-    return sokol.app.heightf();
+    return @divTrunc(sokol.app.height(), scale);
 }
 
 /// Loads the spritesheet.

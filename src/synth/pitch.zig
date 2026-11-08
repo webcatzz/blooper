@@ -127,8 +127,8 @@ pub fn freq(pitch: u8) f32 {
 }
 
 /// Returns the octave the pitch belongs to.
-pub fn octave(pitch: u8) u8 {
-    return pitch / 12;
+pub fn octave(pitch: u8) i8 {
+    return @as(i8, @intCast(pitch / 12)) - 1;
 }
 
 /// Returns the pitch class the pitch belongs to.
