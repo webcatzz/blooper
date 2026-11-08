@@ -1,4 +1,19 @@
 //! Rendering.
+//!
+//! Rendering operations are collected in a `Queue` and flushed to the GPU by
+//! calling `Queue.flush`. All rendering operations take logical pixel
+//! coordinates, which are scaled up on the GPU to true display coordinates.
+//!
+//! All rendering uses a single 255-by-255 spritesheet texture, which is loaded
+//! when a `Queue` is initialized and used for the entirety of the queue's
+//! lifetime. For convenience, all slices defined in the spritesheet file are
+//! enumerated by `Sprite` and compiled in as constants during build time.
+//!
+//! `Queue` provides draw calls with varying levels of abstraction. The user may
+//!
+//! - draw arbitrary vertices,
+//! - draw arbitrary slices of the spritesheet,
+//! - or draw predefined `Sprite`s.
 
 const ase = @import("../../util/ase.zig");
 const builtin = @import("builtin");
@@ -95,10 +110,13 @@ pub const Queue = struct {
         try self.cmd_buf.append(loop.gpa, .{ .draw = @intCast(vertices.len) });
     }
 
+    /// Draws the given slice of the spritesheet with `pos` at its top-left
+    /// corner.
     pub fn drawSlice(self: *Queue, src: math.Rect(u8), pos: math.Vec2(i32)) !void {
         try self.drawSliceStretch(src, .{ .x = pos.x, .y = pos.y, .w = src.w, .h = src.h });
     }
 
+    /// Draws the given slice of the spritesheet stretched to fill `dst`.
     pub fn drawSliceStretch(self: *Queue, src: math.Rect(u8), dst: math.Rect(i32)) !void {
         const vertices: [4]Vertex = .{ .{
             .x = @floatFromInt(dst.x),
@@ -124,11 +142,14 @@ pub const Queue = struct {
         try self.draw(&.{ vertices[0], vertices[1], vertices[3], vertices[0], vertices[3], vertices[2] });
     }
 
+    /// Draws the given slice of the spritesheet repeated to fill `dst`.
     pub fn drawSliceRepeat(self: *Queue, src: math.Rect(u8), dst: math.Rect(i32)) !void {
         // TODO repeat
         try self.drawSliceStretch(src, dst);
     }
 
+    /// Draws the given slice of the spritesheet stretched to fill `dst` while
+    /// preserving the size of its borders.
     pub fn drawSlice9Patch(self: *Queue, src: math.Rect(u8), border: math.Sides(u8), dst: math.Rect(i32)) !void {
         const SlicePair = struct {
             src: struct { off: u8, len: u8 },
@@ -171,23 +192,29 @@ pub const Queue = struct {
                 });
     }
 
+    /// Draws the given sprite with `pos` at its top-left corner.
     pub fn drawSprite(self: *Queue, spr: Sprite, pos: math.Vec2(i32)) !void {
         try self.drawSlice(Sprite.info.get(spr).rect, pos);
     }
 
+    /// Draws the given sprite stretched to fill `dst`.
     pub fn drawSpriteStretch(self: *Queue, spr: Sprite, dst: math.Rect(i32)) !void {
         try self.drawSliceStretch(Sprite.info.get(spr).rect, dst);
     }
 
+    /// Draws the given sprite repeated to fill `dst`.
     pub fn drawSpriteRepeat(self: *Queue, spr: Sprite, dst: math.Rect(i32)) !void {
         try self.drawSliceRepeat(Sprite.info.get(spr).rect, dst);
     }
 
+    /// Draws the given sprite stretched to fill `dst` while preserving the size
+    /// of its borders.
     pub fn drawSprite9Patch(self: *Queue, spr: Sprite, dst: math.Rect(i32)) !void {
         const info = Sprite.info.get(spr);
         try self.drawSlice9Patch(info.rect, info.border, dst);
     }
 
+    /// Draws the given string with `pos` at its top-left corner.
     pub fn drawText(self: *Queue, text: []const u8, pos: math.Vec2(i32)) !void {
         var x = pos.x;
 
@@ -212,10 +239,12 @@ pub const Queue = struct {
         }
     }
 
+    /// Clips subsequent drawing operations to the given rectangle.
     pub fn clip(self: *Queue, rect: math.Rect(i32)) !void {
         try self.cmd_buf.append(loop.gpa, .{ .clip = rect });
     }
 
+    /// Ignores any previous clipping for subsequent drawing operations.
     pub fn unclip(self: *Queue) !void {
         try self.cmd_buf.append(loop.gpa, .unclip);
     }
@@ -294,6 +323,7 @@ pub const Queue = struct {
     }
 };
 
+/// Predefined slices of the spritesheet.
 pub const Sprite = enum {
     panel,
     panel_inset,
@@ -373,8 +403,10 @@ pub const Sprite = enum {
     font_9,
     font_hash,
 
+    /// Descriptions of each sprite.
     pub const info: std.EnumArray(Sprite, Info) = .init(@import("spr_info"));
 
+    /// A description of a sprite.
     const Info = struct {
         rect: math.Rect(u8),
         border: math.Sides(u8),
