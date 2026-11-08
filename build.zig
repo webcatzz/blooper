@@ -5,6 +5,14 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    // Adds synth module
+
+    _ = b.addModule("synth", .{
+        .root_source_file = b.path("src/synth/root.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     // Adds Sokol
 
     const sokol_dep = b.dependency("sokol", .{
