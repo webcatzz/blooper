@@ -1,4 +1,12 @@
 //! An immediate-mode UI system.
+//!
+//! The system works in two phases:
+//!
+//! 1. The drawing phase. UI elements are added using draw calls like `panel`
+//!    and `addButton`. Elements that respond to input flag their regions with
+//!    `flag`, and the user may flag arbitrary regions as well.
+//! 2. The input phase. All flagged regions that intersect the cursor position
+//!    have their callbacks called.
 
 const action = @import("action.zig");
 const builtin = @import("builtin");
