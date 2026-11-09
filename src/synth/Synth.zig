@@ -37,6 +37,8 @@ const Channel = struct {
     }
 
     fn synth(self: *Channel, smp_off: usize, smp_rate: u32, output: []f32) void {
+        const scale = 1 / @as(f32, @floatFromInt(self.notes.items.len));
+
         for (self.notes.items) |*note|
             for (output, 0..) |*smp, i| {
                 const phase = @as(f32, @floatFromInt(smp_off + i)) * pitch_util.freq(note.pitch) / @as(f32, @floatFromInt(smp_rate));
@@ -46,7 +48,7 @@ const Channel = struct {
                     .chip_pulse => |duty| chipPulse(phase_fract, duty),
                     .chip_triangle => chipTriangle(phase_fract),
                     .chip_sine => chipSine(phase_fract),
-                } * @as(f32, @floatFromInt(note.volume)) / 0xff;
+                } * @as(f32, @floatFromInt(note.volume)) / 0xff * scale;
             };
     }
 };
