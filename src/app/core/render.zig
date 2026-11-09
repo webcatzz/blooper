@@ -15,7 +15,7 @@
 //! - draw arbitrary slices of the spritesheet,
 //! - or draw predefined `Sprite`s.
 
-const ase = @import("../../util/ase.zig");
+const ase = @import("../ase.zig");
 const builtin = @import("builtin");
 const loop = @import("loop.zig");
 const math = @import("math.zig");

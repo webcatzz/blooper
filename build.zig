@@ -45,7 +45,7 @@ pub fn build(b: *std.Build) !void {
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "ase", .module = b.createModule(.{ .root_source_file = b.path("src/util/ase.zig") }) },
+                .{ .name = "ase", .module = b.createModule(.{ .root_source_file = b.path("src/app/ase.zig") }) },
             },
         }),
     });
