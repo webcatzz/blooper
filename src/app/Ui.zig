@@ -94,6 +94,14 @@ const Callback = struct {
     }
 };
 
+/// Frees the UI system.
+///
+/// The UI should not be used after calling this function.
+pub fn deinit(self: *Ui) void {
+    self.clip_stack.deinit(self.queue.gpa);
+    self.regions.deinit(self.queue.gpa);
+}
+
 /// Clears the UI, resizing it to the given rectangle.
 ///
 /// Uses the given input state and rendering queue for the next batch of draw

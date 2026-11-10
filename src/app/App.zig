@@ -55,6 +55,7 @@ pub fn init(gpa: std.mem.Allocator, io: std.Io) !App {
 pub fn deinit(self: *App) void {
     self.ctx.gpa.free(self.synth_buf);
     self.ctx.deinit();
+    self.ui.deinit();
     self.render_queue.deinit();
     self.* = undefined;
 }
