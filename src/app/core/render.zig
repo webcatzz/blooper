@@ -17,7 +17,6 @@
 
 const ase = @import("../ase.zig");
 const builtin = @import("builtin");
-const loop = @import("loop.zig");
 const math = @import("math.zig");
 const shd_basic = @import("shd_basic");
 const sokol = @import("sokol");
@@ -30,6 +29,7 @@ pub const scale = 3;
 pub const Queue = struct {
     cmd_buf: std.ArrayList(Command) = .empty,
     vtx_buf: std.ArrayList(Vertex) = .empty,
+    gpa: std.mem.Allocator,
     _gpu_vtx_buf: sokol.gfx.Buffer,
     _gpu_img: sokol.gfx.Image,
     _gpu_view: sokol.gfx.View,
@@ -40,13 +40,13 @@ pub const Queue = struct {
     ///
     /// The queue is owned by the caller and should be freed by calling
     /// `deinit`.
-    pub fn init() !Queue {
+    pub fn init(gpa: std.mem.Allocator, io: std.Io) !Queue {
         const vtx_buf = sokol.gfx.makeBuffer(.{
             .size = @sizeOf(Vertex),
             .usage = .{ .vertex_buffer = true, .write_transient = true },
         });
 
-        const img = try loadSpritesheet(loop.gpa, loop.io);
+        const img = try loadSpritesheet(gpa, io);
 
         const view = sokol.gfx.makeView(.{ .texture = .{ .image = img } });
 
@@ -66,6 +66,7 @@ pub const Queue = struct {
         });
 
         return .{
+            .gpa = gpa,
             ._gpu_vtx_buf = vtx_buf,
             ._gpu_img = img,
             ._gpu_view = view,
@@ -78,8 +79,8 @@ pub const Queue = struct {
     ///
     /// The queue should not be used after calling this function.
     pub fn deinit(self: *Queue) void {
-        self.cmd_buf.deinit(loop.gpa);
-        self.vtx_buf.deinit(loop.gpa);
+        self.cmd_buf.deinit(self.gpa);
+        self.vtx_buf.deinit(self.gpa);
         sokol.gfx.destroyBuffer(self._gpu_vtx_buf);
         sokol.gfx.destroyImage(self._gpu_img);
         sokol.gfx.destroyView(self._gpu_view);
@@ -91,7 +92,7 @@ pub const Queue = struct {
     /// Queues the given vertices to be drawn.
     pub fn draw(self: *Queue, vertices: []const Vertex) !void {
         if (vertices.len > self.vtx_buf.capacity - self.vtx_buf.items.len) {
-            try self.vtx_buf.ensureTotalCapacity(loop.gpa, self.vtx_buf.items.len + vertices.len);
+            try self.vtx_buf.ensureTotalCapacity(self.gpa, self.vtx_buf.items.len + vertices.len);
 
             const gpu_vtx_buf = sokol.gfx.makeBuffer(.{
                 .usage = .{ .vertex_buffer = true, .write_transient = true },
@@ -107,7 +108,7 @@ pub const Queue = struct {
                 last_cmd.draw += @intCast(vertices.len);
                 return;
             };
-        try self.cmd_buf.append(loop.gpa, .{ .draw = @intCast(vertices.len) });
+        try self.cmd_buf.append(self.gpa, .{ .draw = @intCast(vertices.len) });
     }
 
     /// Draws the given slice of the spritesheet with `pos` at its top-left
@@ -237,12 +238,12 @@ pub const Queue = struct {
 
     /// Clips subsequent drawing operations to the given rectangle.
     pub fn clip(self: *Queue, rect: math.Rect(i32)) !void {
-        try self.cmd_buf.append(loop.gpa, .{ .clip = rect });
+        try self.cmd_buf.append(self.gpa, .{ .clip = rect });
     }
 
     /// Ignores any previous clipping for subsequent drawing operations.
     pub fn unclip(self: *Queue) !void {
-        try self.cmd_buf.append(loop.gpa, .unclip);
+        try self.cmd_buf.append(self.gpa, .unclip);
     }
 
     /// Submits all queued operations to be rendered and clears the queue.

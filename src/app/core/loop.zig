@@ -1,12 +1,28 @@
 //! The main loop.
 
+const builtin = @import("builtin");
 const input = @import("input.zig");
 const render = @import("render.zig");
 const sokol = @import("sokol");
 const std = @import("std");
 
-pub var gpa: std.mem.Allocator = undefined;
-pub var io: std.Io = undefined;
+/// `true` if the program is being compiled for Wasm.
+const is_wasm = builtin.target.cpu.arch.isWasm();
+/// If `true`, apps will be passed a safe allocator during initialization.
+///
+/// Emulates the behavior of `std.start`.
+const use_safe_allocator = !is_wasm and switch (builtin.optimize) {
+    .debug, .safe => true,
+    .fast, .small => !builtin.link_libc and builtin.single_threaded,
+};
+
+/// Initialization parameters passed to the program.
+var _init: std.process.Init.Minimal = undefined;
+/// The allocator implementation passed to apps during initialization if
+/// `use_safe_allocator` is `true`.
+var safe_allocator: std.heap.SafeAllocator = undefined;
+/// The IO implementation used by the app.
+var threaded_io: std.Io.Threaded = undefined;
 
 /// Runs the application defined by `T`.
 ///
@@ -20,26 +36,52 @@ pub var io: std.Io = undefined;
 /// ```
 ///
 /// This function should not be called while another instance is still running.
-pub fn run(comptime T: type, init: std.process.Init) void {
+pub fn run(comptime T: type, init: std.process.Init.Minimal) void {
+    _init = init;
+
     const impl = struct {
         var state: T = undefined;
 
         fn sokolInit() callconv(.c) void {
+            // Chooses allocator (emulates behavior of `std.start`)
+
+            const gpa = if (use_safe_allocator) init: {
+                safe_allocator = .init(std.heap.page_allocator, .{});
+                break :init safe_allocator.allocator();
+            } else if (builtin.link_libc)
+                std.heap.c_allocator
+            else if (is_wasm)
+                std.heap.wasm_allocator
+            else if (!builtin.single_threaded)
+                std.heap.smp_allocator
+            else
+                unreachable;
+
+            // Initializes IO
+
+            threaded_io = .init(gpa, .{
+                .argv0 = .init(.{ .vector = _init.args.vector }),
+                .environ = .{ .block = _init.environ.block },
+            });
+
+            // Initializes Sokol
+
             sokol.gfx.setup(.{
                 .environment = sokol.glue.environment(),
                 .logger = .{ .func = sokol.log.func },
             });
+            if (!sokol.gfx.isvalid())
+                std.log.scoped(.sokol).err("Failed to initialize Sokol graphics backend", .{});
 
             sokol.audio.setup(.{
                 .logger = .{ .func = sokol.log.func },
             });
-
-            if (!sokol.gfx.isvalid())
-                std.log.scoped(.sokol).err("Failed to initialize Sokol graphics backend", .{});
             if (!sokol.audio.isvalid())
                 std.log.scoped(.sokol).err("Failed to initialize Sokol audio backend", .{});
 
-            state = T.init(gpa, io) catch {
+            // Initializes app
+
+            state = T.init(gpa, threaded_io.io()) catch {
                 if (@errorReturnTrace()) |trace|
                     std.debug.dumpErrorReturnTrace(trace);
                 sokol.app.quit();
@@ -51,6 +93,10 @@ pub fn run(comptime T: type, init: std.process.Init) void {
             state.deinit();
             sokol.audio.shutdown();
             sokol.gfx.shutdown();
+
+            threaded_io.deinit();
+            if (use_safe_allocator)
+                _ = safe_allocator.deinit();
         }
 
         fn sokolFrame() callconv(.c) void {
@@ -111,9 +157,6 @@ pub fn run(comptime T: type, init: std.process.Init) void {
             };
         }
     };
-
-    gpa = init.gpa;
-    io = init.io;
 
     sokol.app.run(.{
         .window_title = "blooper",

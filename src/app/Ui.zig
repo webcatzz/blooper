@@ -11,7 +11,6 @@
 const action = @import("action.zig");
 const builtin = @import("builtin");
 const Ctx = @import("Ctx.zig");
-const loop = @import("core/loop.zig");
 const math = @import("core/math.zig");
 const render = @import("core/render.zig");
 const std = @import("std");
@@ -175,6 +174,12 @@ pub fn addIconButton(self: *Ui, icon: render.Sprite, callback: Callback) !void {
     try self.flag(rect, callback);
 }
 
+pub fn addDropdown(self: *Ui, text: []const u8, callback: Callback) !void {
+    _ = self;
+    _ = text;
+    _ = callback;
+}
+
 /// Adds a scrollbar to the working rectangle, shrinking it as a result.
 ///
 /// Calls the given callback when the scrollbar receives input. See `flag` for
@@ -244,7 +249,7 @@ pub fn clip(self: *Ui, rect: math.Rect(i32)) !void {
     if (self.clip_stack.last()) |last_rect|
         intersection = intersection.intersect(last_rect);
 
-    try self.clip_stack.append(loop.gpa, intersection);
+    try self.clip_stack.append(self.queue.gpa, intersection);
     try self.queue.clip(intersection);
 }
 
@@ -265,7 +270,7 @@ pub fn unclip(self: *Ui) !void {
 /// particular, the callback context should not be moved or modified in any way
 /// that would invalidate the callback's pointer to its context.
 pub fn flag(self: *Ui, rect: math.Rect(i32), callback: Callback) !void {
-    try self.regions.append(loop.gpa, .{ .rect = rect, .callback = callback });
+    try self.regions.append(self.queue.gpa, .{ .rect = rect, .callback = callback });
 }
 
 /// Responds to the most recently recorded input event in `ctx`.

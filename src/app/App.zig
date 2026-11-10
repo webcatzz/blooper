@@ -33,8 +33,8 @@ piano_roll: PianoRoll = .{},
 timeline: Timeline = .{},
 
 /// Initializes the app.
-pub fn init(gpa: std.mem.Allocator, _: std.Io) !App {
-    var render_queue: render.Queue = try .init();
+pub fn init(gpa: std.mem.Allocator, io: std.Io) !App {
+    var render_queue: render.Queue = try .init(gpa, io);
     errdefer render_queue.deinit();
 
     const synth_buf = try gpa.alloc(f32, 1024);
