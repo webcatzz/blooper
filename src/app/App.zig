@@ -70,7 +70,7 @@ pub fn iter(self: *App) !void {
         &self.render_queue,
     );
 
-    self.ui.split(.y, @divTrunc(self.ui.rect.h, 3) * 2);
+    try self.ui.split(.y, @divTrunc(self.ui.rect.h, 3) * 2);
     try self.ui.panel();
     try self.piano_roll.draw(self.ctx, &self.ui);
     self.ui.next();

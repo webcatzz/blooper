@@ -44,7 +44,7 @@ const Selection = union(enum) {
 
 /// Draws the timeline.
 pub fn draw(self: *const Timeline, ctx: Ctx, ui: *Ui) !void {
-    ui.split(.y, Ui.icon_button_h);
+    try ui.split(.y, Ui.icon_button_h);
 
     try ui.addIconButton(if (ctx.is_playing) .button_icon_stop else .button_icon_play, .wrap(respondPlayButton));
 

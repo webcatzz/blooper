@@ -20,8 +20,8 @@ const Ui = @This();
 
 /// The current working rectangle.
 rect: math.Rect(i32) = .zero,
-/// The next working rectangle.
-next_rect: math.Rect(i32) = .zero,
+/// A queue of future working rectangles.
+rect_queue: std.ArrayList(math.Rect(i32)) = .empty,
 /// A stack of clipping rectangles.
 clip_stack: std.ArrayList(math.Rect(i32)) = .empty,
 
@@ -98,6 +98,7 @@ const Callback = struct {
 ///
 /// The UI should not be used after calling this function.
 pub fn deinit(self: *Ui) void {
+    self.rect_queue.deinit(self.queue.gpa);
     self.clip_stack.deinit(self.queue.gpa);
     self.regions.deinit(self.queue.gpa);
 }
@@ -113,6 +114,7 @@ pub fn clear(
     queue: *render.Queue,
 ) void {
     self.rect = rect;
+    self.rect_queue.clearRetainingCapacity();
     self.clip_stack.clearRetainingCapacity();
     self.regions.clearRetainingCapacity();
     self.input = input;
@@ -122,27 +124,29 @@ pub fn clear(
 /// Splits the working rectangle at the given position along the given axis.
 ///
 /// Call `next` to move to the next half of the split.
-pub fn split(self: *Ui, comptime axis: math.Axis, pos: i32) void {
-    // TODO nested splits behave unexpectedly
+pub fn split(self: *Ui, comptime axis: math.Axis, pos: i32) !void {
+    var next_rect = self.rect;
+
     switch (axis) {
         .x => {
-            self.next_rect = self.rect;
             self.rect.w = pos;
-            self.next_rect.x += pos;
-            self.next_rect.w -= pos;
+            next_rect.x += pos;
+            next_rect.w -= pos;
         },
         .y => {
-            self.next_rect = self.rect;
             self.rect.h = pos;
-            self.next_rect.y += pos;
-            self.next_rect.h -= pos;
+            next_rect.y += pos;
+            next_rect.h -= pos;
         },
     }
+
+    try self.rect_queue.append(self.queue.gpa, next_rect);
 }
 
 /// Moves to the next working rectangle.
 pub fn next(self: *Ui) void {
-    self.rect = self.next_rect;
+    if (self.rect_queue.pop()) |rect|
+        self.rect = rect;
 }
 
 /// Adds a panel to the working rectangle, shrinking it as a result.
