@@ -56,8 +56,12 @@ pub fn draw(self: *const PianoRoll, ctx: Ctx, ui: *Ui) !void {
         return;
     };
 
-    try ui.addScrollbar(.y, @trunc(self.scroll.y), @max(ui.rect.y, full_h), .wrapCtx(@constCast(self), respondVScrollbar));
-    try ui.addScrollbar(.x, @trunc(self.scroll.x), @max(ui.rect.x, fullW(ctx.edit.track.patterns[pat_i]), @as(i32, @trunc(self.scroll.x))), .wrapCtx(@constCast(self), respondHScrollbar));
+    try ui.addScrollbars(
+        self.scroll.trunc(i32),
+        .{ .x = fullW(ctx.edit.track.patterns[pat_i]), .y = full_h },
+        .wrapCtx(@constCast(self), respondVScrollbar),
+        .wrapCtx(@constCast(self), respondHScrollbar),
+    );
 
     try ui.inset();
     try ui.clip(ui.rect);

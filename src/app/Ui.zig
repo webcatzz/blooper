@@ -186,72 +186,122 @@ pub fn addIconButton(self: *Ui, icon: render.Sprite, callback: Callback) !void {
     try self.flag(rect, callback);
 }
 
-pub fn addDropdown(self: *Ui, text: []const u8, callback: Callback) !void {
-    _ = self;
-    _ = text;
-    _ = callback;
+/// Adds a scrollbar in the given rectangle.
+///
+/// Calls `cb` when the scrollbar receives input. See `flag` for usage notes.
+fn scrollbar(
+    self: *Ui,
+    rect: math.Rect(i32),
+    comptime axis: math.Axis,
+    scroll: i32,
+    full_size: i32,
+    cb: Callback,
+) !void {
+    const max_scroll = @max(full_size, scroll);
+    const thumb_border = render.Sprite.info.get(.scroll_thumb).border;
+
+    try self.queue.drawSpriteStretch(.scroll_track, rect.shrink(.all(1)));
+
+    switch (axis) {
+        .x => {
+            const thumb_len = @min(@max(0, rect.w), @max(16, @divTrunc(rect.w * rect.w, max_scroll)));
+            const thumb_off = @divTrunc((rect.w - thumb_len) * scroll, max_scroll);
+
+            try self.queue.drawSprite9Patch(.scroll_thumb, .{
+                .x = rect.x + thumb_off,
+                .y = rect.y - 1,
+                .w = thumb_len,
+                .h = rect.h + 2,
+            });
+            try self.queue.drawSprite(.scroll_ticks_h, .{
+                .x = rect.x + thumb_off + (thumb_len - thumb_border.left - thumb_border.right) / 2,
+                .y = rect.y - 1 + thumb_border.top,
+            });
+        },
+
+        .y => {
+            const thumb_len = @min(@max(0, rect.h), @max(16, @divTrunc(rect.h * rect.h, max_scroll)));
+            const thumb_off = @divTrunc((rect.h - thumb_len) * scroll, max_scroll);
+
+            try self.queue.drawSprite9Patch(.scroll_thumb, .{
+                .x = rect.x - 1,
+                .y = rect.y + thumb_off,
+                .w = rect.w + 2,
+                .h = thumb_len,
+            });
+            try self.queue.drawSprite(.scroll_ticks_v, .{
+                .x = rect.x - 1 + thumb_border.left,
+                .y = rect.y + thumb_off + (thumb_len - thumb_border.top - thumb_border.bottom) / 2,
+            });
+        },
+    }
+
+    try self.flag(rect, cb);
 }
 
 /// Adds a scrollbar to the working rectangle, shrinking it as a result.
 ///
-/// Calls the given callback when the scrollbar receives input. See `flag` for
-/// usage notes.
-pub fn addScrollbar(self: *Ui, comptime axis: math.Axis, scroll: i32, full_size: i32, callback: Callback) !void {
+/// Calls `cb` when the scrollbar receives input. See `flag` for usage notes.
+pub fn addScrollbar(self: *Ui, comptime axis: math.Axis, scroll: i32, full_size: i32, cb: Callback) !void {
     switch (axis) {
         .x => {
             self.rect.h -= 4;
 
-            const thumb_len = @min(@max(0, self.rect.w), @max(16, @divTrunc(self.rect.w * self.rect.w, full_size)));
-            const thumb_off = @divTrunc((self.rect.w - thumb_len) * scroll, full_size);
-            const track_rect: math.Rect(i32) = .{
+            self.scrollbar(.{
                 .x = self.rect.x,
                 .y = self.rect.y + self.rect.h,
                 .w = self.rect.w,
                 .h = 4,
-            };
-            const scroll_thumb_border = render.Sprite.info.get(.scroll_thumb).border;
-
-            try self.flag(track_rect, callback);
-
-            try self.queue.drawSpriteStretch(.scroll_track, track_rect.shrink(.all(1)));
-            try self.queue.drawSprite9Patch(.scroll_thumb, .{
-                .x = track_rect.x + thumb_off,
-                .y = track_rect.y - 1,
-                .w = thumb_len,
-                .h = track_rect.h + 2,
-            });
-            try self.queue.drawSprite(.scroll_ticks_h, .{
-                .x = track_rect.x + thumb_off + @divTrunc(thumb_len - scroll_thumb_border.left - scroll_thumb_border.right, 2),
-                .y = track_rect.y - 1 + scroll_thumb_border.top,
-            });
+            }, scroll, full_size, cb);
         },
+
         .y => {
             self.rect.w -= 4;
 
-            const thumb_len = @min(@max(0, self.rect.h), @max(16, @divTrunc(self.rect.h * self.rect.h, full_size)));
-            const thumb_off = @divTrunc((self.rect.h - thumb_len) * scroll, full_size);
-            const track_rect: math.Rect(i32) = .{
+            self.scrollbar(.{
                 .x = self.rect.x + self.rect.w,
                 .y = self.rect.y,
                 .w = 4,
                 .h = self.rect.h,
-            };
-            const scroll_thumb_border = render.Sprite.info.get(.scroll_thumb).border;
-
-            try self.flag(track_rect, callback);
-
-            try self.queue.drawSpriteStretch(.scroll_track, track_rect.shrink(.all(1)));
-            try self.queue.drawSprite9Patch(.scroll_thumb, .{
-                .x = track_rect.x - 1,
-                .y = track_rect.y + thumb_off,
-                .w = track_rect.w + 2,
-                .h = thumb_len,
-            });
-            try self.queue.drawSprite(.scroll_ticks_v, .{
-                .x = track_rect.x - 1 + scroll_thumb_border.left,
-                .y = track_rect.y + thumb_off + (thumb_len - scroll_thumb_border.top - scroll_thumb_border.bottom) / 2,
-            });
+            }, scroll, full_size, cb);
         },
+    }
+}
+
+/// Adds scrollbars to the working rectangle, shrinking it as a result.
+///
+/// Calls `v_cb` and `h_cb` when the vertical and horizontal scrollbars receive
+/// input, respectively. See `flag` for usage notes.
+pub fn addScrollbars(
+    self: *Ui,
+    scroll: math.Vec2(i32),
+    full_size: math.Vec2(i32),
+    v_cb: Callback,
+    h_cb: Callback,
+) !void {
+    const has_v_scrollbar = full_size.y > self.rect.h;
+    const has_h_scrollbar = full_size.x > self.rect.w;
+
+    if (has_v_scrollbar) {
+        self.rect.w -= 4;
+
+        try self.scrollbar(.{
+            .x = self.rect.x + self.rect.w,
+            .y = self.rect.y,
+            .w = 4,
+            .h = self.rect.h - 4 * @as(i32, @intFromBool(has_h_scrollbar)),
+        }, .y, scroll.y, full_size.y, v_cb);
+    }
+
+    if (has_h_scrollbar) {
+        self.rect.h -= 4;
+
+        try self.scrollbar(.{
+            .x = self.rect.x,
+            .y = self.rect.y + self.rect.h,
+            .w = self.rect.w,
+            .h = 4,
+        }, .x, scroll.x, full_size.x, h_cb);
     }
 }
 
