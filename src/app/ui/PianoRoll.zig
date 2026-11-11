@@ -146,6 +146,7 @@ fn respond(self: *PianoRoll, ctx: *Ctx, rect: math.Rect(i32)) !void {
                 switch (self.sel) {
                     .note => |note_i| {
                         const note = &ctx.edit.track.patterns[pat_i].notes[note_i];
+                        note.pitch = self.pitchFromY(ctx.input.cur_pos.y, rect.y);
                         if (ctx.input.cur_motion.x < 0) {
                             const tick_offset = @min(note.first_tick, ticksFromWidth(ctx.input.cur_motion.x));
                             note.first_tick -= tick_offset;
