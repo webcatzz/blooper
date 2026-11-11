@@ -155,10 +155,10 @@ pub fn Rect(comptime T: type) type {
 /// Stores an offset for each cardinal side.
 pub fn Sides(comptime T: type) type {
     return struct {
-        left: T,
-        right: T,
-        top: T,
-        bottom: T,
+        left: T = 0,
+        right: T = 0,
+        top: T = 0,
+        bottom: T = 0,
 
         /// Returns a value with all offsets set to `v`.
         pub fn all(v: T) Sides(T) {
