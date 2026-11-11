@@ -33,6 +33,10 @@ input: *action.Map = undefined,
 /// A queue of instructions for rendering the UI.
 queue: *render.Queue = undefined,
 
+/// If `true`, regions listening for input should be outlined.
+dbg_draw_ui_flags: if (builtin.optimize == .debug) bool else void =
+    if (builtin.optimize == .debug) false else {},
+
 /// The width of an icon button.
 pub const icon_button_w = 9;
 /// The height of an icon button.
@@ -333,10 +337,16 @@ pub fn unclip(self: *Ui) !void {
 /// that would invalidate the callback's pointer to its context.
 pub fn flag(self: *Ui, rect: math.Rect(i32), callback: Callback) !void {
     try self.regions.append(self.queue.gpa, .{ .rect = rect, .callback = callback });
+
+    if (builtin.optimize == .debug and self.dbg_draw_ui_flags)
+        try self.queue.drawSprite9Patch(.dbg_ui_flag_border, rect);
 }
 
 /// Responds to the most recently recorded input event in `ctx`.
-pub fn respond(self: Ui, ctx: *Ctx) !void {
+pub fn respond(self: *Ui, ctx: *Ctx) !void {
+    if (builtin.optimize == .debug and ctx.input.wasJustActivated(.dbg_toggle_draw_ui_flags))
+        self.dbg_draw_ui_flags = !self.dbg_draw_ui_flags;
+
     for (self.regions.items(.rect), 0..) |rect, i|
         if (rect.contains(ctx.input.cur_pos))
             try self.regions.items(.callback)[i].call(ctx, rect);

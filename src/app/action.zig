@@ -19,6 +19,8 @@ pub const Action = enum {
     toggle_synth,
 
     quit,
+
+    dbg_toggle_draw_ui_flags,
 };
 
 /// A physical button binding for an action.
@@ -65,6 +67,8 @@ pub const Map = struct {
         .toggle_synth = .{ .{ .button = .key_space }, null },
 
         .quit = .{ .{ .button = .key_w, .modifiers = .{ .super = true } }, null },
+
+        .dbg_toggle_draw_ui_flags = .{ .{ .button = .key_9 }, null },
     });
 
     /// Records the given input event.

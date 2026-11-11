@@ -328,6 +328,7 @@ pub const Queue = struct {
 pub const Sprite = enum {
     panel,
     panel_inset,
+    panel_ticks_v,
     tab_active,
     tab_inactive,
     button,
@@ -335,12 +336,15 @@ pub const Sprite = enum {
     button_active,
     button_icon_play,
     button_icon_stop,
+    switch_off,
+    switch_on,
     field,
-    field_focused,
+    field_hovered,
     field_cursor,
     dropdown,
-    dropdown_focused,
+    dropdown_hovered,
     dropdown_active,
+
     scroll_track,
     scroll_thumb,
     scroll_ticks_v,
@@ -459,6 +463,8 @@ pub const Sprite = enum {
     font_pipe,
     font_rbrace,
     font_tilde,
+
+    dbg_ui_flag_border,
 
     /// Descriptions of each sprite.
     pub const info: std.EnumArray(Sprite, Info) = .init(@import("spr_info"));
