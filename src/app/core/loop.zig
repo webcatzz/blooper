@@ -110,12 +110,12 @@ pub fn run(comptime T: type, init: std.process.Init.Minimal) void {
 
         fn sokolEvent(event: [*c]const sokol.app.Event) callconv(.c) void {
             (switch (event.*.type) {
-                .KEY_DOWN => state.respond(.button, .{
+                .KEY_DOWN => if (!event.*.key_repeat) state.respond(.button, .{
                     .button = buttonFromSokolKeycode(event.*.key_code) orelse return,
                     .is_pressed = true,
                 }),
 
-                .KEY_UP => state.respond(.button, .{
+                .KEY_UP => if (!event.*.key_repeat) state.respond(.button, .{
                     .button = buttonFromSokolKeycode(event.*.key_code) orelse return,
                     .is_pressed = false,
                 }),
