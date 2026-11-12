@@ -41,6 +41,8 @@ dbg_draw_ui_flags: if (builtin.optimize == .debug) bool else void =
 pub const icon_button_w = 9;
 /// The height of an icon button.
 pub const icon_button_h = 9;
+/// The horizontal padding applied to the contents of a field.
+pub const field_padding_h = 4;
 
 /// A rectangular region of the UI with an associated input callback.
 const Region = struct {
@@ -188,6 +190,29 @@ pub fn addIconButton(self: *Ui, icon: render.Sprite, callback: Callback) !void {
     try self.queue.drawSprite9Patch(spr, rect);
     try self.queue.drawSprite(icon, .{ .x = rect.x + 3, .y = rect.y + 2 + @intFromBool(spr == .button_active) });
     try self.flag(rect, callback);
+}
+
+/// Places a field in the top-left corner of the working rectangle.
+///
+/// Calls `cb` when the field receives input. See `flag` for usage notes.
+pub fn addField(self: *Ui, text: []const u8, width: i32, cb: Callback) !void {
+    const rect: math.Rect(i32) = .{
+        .x = self.rect.x,
+        .y = self.rect.y,
+        .w = width,
+        .h = self.rect.h,
+    };
+
+    const spr: render.Sprite = if (!rect.contains(self.input.cur_pos))
+        .field
+    else if (self.input.isActive(.accept))
+        .field_hovered
+    else
+        .field_hovered;
+
+    try self.queue.drawSprite9Patch(spr, rect);
+    try self.queue.drawText(text, rect.pos().add(.{ .x = field_padding_h, .y = 0 }));
+    try self.flag(rect, cb);
 }
 
 /// Adds a scrollbar in the given rectangle.
